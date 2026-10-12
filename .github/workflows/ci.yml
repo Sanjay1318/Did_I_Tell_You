@@ -20,7 +20,8 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter analyze
+      # Infos (style hints) are reported but don't fail the build; warnings and errors do.
+      - run: flutter analyze --no-fatal-infos
       - run: flutter test --coverage
       - uses: actions/upload-artifact@v4
         with:
@@ -67,24 +68,37 @@ jobs:
     name: Integration tests (Android emulator)
     needs: analyze-and-test
     runs-on: ubuntu-latest
-    if: hashFiles('integration_test/**') != ''
     steps:
       - uses: actions/checkout@v4
+      - name: Check for integration tests
+        id: check
+        run: |
+          if [ -d integration_test ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No integration_test/ folder yet, skipping."
+          fi
       - uses: actions/setup-java@v4
+        if: steps.check.outputs.present == 'true'
         with:
           distribution: temurin
           java-version: '17'
       - uses: subosito/flutter-action@v2
+        if: steps.check.outputs.present == 'true'
         with:
           channel: stable
           cache: true
       - name: Enable KVM
+        if: steps.check.outputs.present == 'true'
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - run: flutter pub get
+        if: steps.check.outputs.present == 'true'
       - uses: reactivecircus/android-emulator-runner@v2
+        if: steps.check.outputs.present == 'true'
         with:
           api-level: 34
           arch: x86_64
