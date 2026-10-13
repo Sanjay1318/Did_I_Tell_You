@@ -24,12 +24,60 @@ void main() {
       expect(EntityExtractor.extractPerson(''), isNull);
     });
 
-    // Characterization test: the text is lower-cased before the capitalized-word
-    // fallback runs, so names outside the built-in list are never detected.
-    // When that is fixed, update this expectation.
-    test('does not detect names missing from the built-in list (current behavior)',
-        () {
-      expect(EntityExtractor.extractPerson('Ramya called me'), isNull);
+    test('detects a known name written as a possessive', () {
+      expect(EntityExtractor.extractPerson("Rahul's birthday is tomorrow"),
+          'Rahul');
+    });
+
+    group('names missing from the built-in list', () {
+      test('detected after a cue word like "lent"', () {
+        expect(EntityExtractor.extractPerson('I lent Ramya 500 rupees'),
+            'Ramya');
+      });
+
+      test('detected after "met", even at the start of the text', () {
+        expect(EntityExtractor.extractPerson('Met Ramya at the cafe'), 'Ramya');
+      });
+
+      test('detected as a possessive', () {
+        expect(EntityExtractor.extractPerson("Ramya's birthday is tomorrow"),
+            'Ramya');
+      });
+
+      test('detected with a curly-apostrophe possessive', () {
+        expect(
+            EntityExtractor.extractPerson('Ramya’s birthday is tomorrow'),
+            'Ramya');
+      });
+
+      test('detected before a verb like "said"', () {
+        expect(EntityExtractor.extractPerson('Ramya said hello'), 'Ramya');
+      });
+
+      test('a capitalized sentence starter is not a person', () {
+        expect(EntityExtractor.extractPerson('Bought milk today'), isNull);
+      });
+
+      test('places are not people', () {
+        expect(EntityExtractor.extractPerson('Parked at Forum Mall'), isNull);
+      });
+
+      test('brands and titles are not people', () {
+        expect(EntityExtractor.extractPerson('I bought it from Amazon'), isNull);
+        expect(
+            EntityExtractor.extractPerson('Watched Interstellar on Netflix'),
+            isNull);
+      });
+
+      test('ALL-CAPS acronyms are not people', () {
+        expect(EntityExtractor.extractPerson('Call EMI office'), isNull);
+      });
+
+      // Deliberate limitation: without a cue, an unknown capitalized word at
+      // the start of a sentence cannot be told apart from "Bought" or "Parked".
+      test('an unknown name with no cue is not detected', () {
+        expect(EntityExtractor.extractPerson('Ramya called me'), isNull);
+      });
     });
   });
 
@@ -69,8 +117,11 @@ void main() {
     test('does not read "rs" inside another word as currency', () {
       expect(EntityExtractor.extractAmount('The shop offers 20 discounts'),
           isNull);
-    }, skip: 'Known bug: the "rs" prefix has no word boundary, so "offers 20" '
-        'is parsed as an amount of 20.');
+    });
+
+    test('still parses Rs with no space before the digits', () {
+      expect(EntityExtractor.extractAmount('Paid Rs250 for tea'), 250.0);
+    });
   });
 
   group('EntityExtractor.extractDate', () {

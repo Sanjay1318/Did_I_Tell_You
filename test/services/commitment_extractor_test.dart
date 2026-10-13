@@ -67,8 +67,15 @@ void main() {
     test('recognizes a curly apostrophe from phone keyboards', () {
       expect(CommitmentExtractor.extract('I’ll call Mom')?.action,
           'call Mom');
-    }, skip: 'Known bug: only the straight apostrophe (\') is matched, but iOS '
-        'and many Android keyboards type the curly one (’).');
+    });
+
+    test('a curly apostrophe still strips the trailing date word', () {
+      expect(
+        CommitmentExtractor.extract('I’ll send the resume tomorrow')
+            ?.action,
+        'send the resume',
+      );
+    });
   });
 
   group('Commitment', () {

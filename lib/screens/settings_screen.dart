@@ -57,12 +57,12 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Card(
+          const Card(
             child: ListTile(
-              leading: const Icon(Icons.lock_outline, color: Colors.green),
-              title: const Text('Privacy'),
-              subtitle: const Text('All data is stored locally on this device'),
-              trailing: const Icon(Icons.check_circle, color: Colors.green),
+              leading: Icon(Icons.lock_outline, color: Colors.green),
+              title: Text('Privacy'),
+              subtitle: Text('All data is stored locally on this device'),
+              trailing: Icon(Icons.check_circle, color: Colors.green),
             ),
           ),
           const SizedBox(height: 12),

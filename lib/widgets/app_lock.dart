@@ -22,11 +22,12 @@ class _AppLockState extends State<AppLock> {
         localizedReason: 'Unlock your private memories',
         options: const AuthenticationOptions(biometricOnly: false),
       );
-      if (mounted)
+      if (mounted) {
         setState(() {
           _unlocked = unlocked;
           _attempted = true;
         });
+      }
     } catch (_) {
       if (mounted) setState(() => _attempted = true);
     }
