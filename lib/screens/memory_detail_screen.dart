@@ -157,8 +157,9 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
       final updatedSuccessfully = await context
           .read<MemoryService>()
           .updateMemory(updated, reanalyze: false);
-      if (updatedSuccessfully && mounted)
+      if (updatedSuccessfully && mounted) {
         setState(() => _currentMemory = updated);
+      }
     }
     controller.dispose();
   }

@@ -162,8 +162,9 @@ class MemoryService extends ChangeNotifier {
       final memory = _memories.where((memory) => memory.id == id).firstOrNull;
       await _dbService.deleteMemory(id);
       _memories.removeWhere((m) => m.id == id);
-      if (memory != null)
+      if (memory != null) {
         await AttachmentService.deleteFiles(memory.attachmentPaths);
+      }
       notifyListeners();
       return true;
     } catch (e) {

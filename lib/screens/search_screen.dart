@@ -69,11 +69,13 @@ class _SearchScreenState extends State<SearchScreen> {
       if (_category != null && memory.category != _category) return false;
       if (_person != null && memory.person != _person) return false;
       if (_minimumAmount != null &&
-          (memory.amount == null || memory.amount! < _minimumAmount!))
+          (memory.amount == null || memory.amount! < _minimumAmount!)) {
         return false;
+      }
       if (_maximumAmount != null &&
-          (memory.amount == null || memory.amount! > _maximumAmount!))
+          (memory.amount == null || memory.amount! > _maximumAmount!)) {
         return false;
+      }
       if (_dateRange != null &&
           (memory.createdAt.isBefore(_dateRange!.start) ||
               memory.createdAt
@@ -216,7 +218,7 @@ class _SearchScreenState extends State<SearchScreen> {
         if (amount != null) {
           buffer.writeln('$person owes you ₹${amount.toStringAsFixed(0)}');
         } else {
-          buffer.writeln('${memory.originalText}');
+          buffer.writeln(memory.originalText);
         }
       }
       return buffer.toString().trim();
