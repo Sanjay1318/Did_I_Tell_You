@@ -105,6 +105,7 @@ Automated tests currently cover:
 - Memory serialization and database-compatible numeric values.
 - New persisted model fields such as pins, reminders, settlement state, tags, attachments, and task state.
 - Entity extraction, category classification, and duplicate detection.
+- Local database behavior (`test/database/`): create, read, update and delete; filters, search and ordering; persistence across restarts; and upgrades from schema versions 1, 2 and 3 to the current version without losing data. These run against SQLite on the development machine via `sqflite_common_ffi`, so they need no phone or emulator.
 
 Before every release, also manually verify:
 
