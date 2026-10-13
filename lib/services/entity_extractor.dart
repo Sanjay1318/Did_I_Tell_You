@@ -117,8 +117,51 @@ class EntityExtractor {
     'dec',
   };
 
+  // Words that are capitalized but never a person's name.
+  static const Set<String> _nonNameWords = {
+    'the',
+    'my',
+    'he',
+    'she',
+    'we',
+    'you',
+    'they',
+  };
+
+  // A capitalized word that is not in the built-in name list is only accepted
+  // as a person when one of these cues is present. Without a cue, sentence
+  // starters ("Bought", "Parked"), places and brands ("Amazon") would be
+  // mistaken for people.
+  static const Set<String> _personCuesBefore = {
+    'lent',
+    'borrowed',
+    'gave',
+    'told',
+    'asked',
+    'met',
+    'thanked',
+    'texted',
+    'messaged',
+  };
+
+  static const Set<String> _personCuesAfter = {
+    'said',
+    'told',
+    'asked',
+    'owes',
+    'likes',
+    'loves',
+    'prefers',
+    'lives',
+    'wants',
+    'texted',
+    'messaged',
+  };
+
+  // The "rs" / "inr" prefixes must start a word, otherwise "offers 20" is read
+  // as an amount of 20 (the "rs" at the end of "offers").
   static final RegExp _amountRegex = RegExp(
-    r'(?:₹|rs\.?|inr)\s*(\d+(?:,\d+)*(?:\.\d+)?)',
+    r'(?:₹|\b(?:rs\.?|inr))\s*(\d+(?:,\d+)*(?:\.\d+)?)',
     caseSensitive: false,
   );
 
@@ -132,29 +175,51 @@ class EntityExtractor {
   );
 
   static String? extractPerson(String text) {
-    final words = text.toLowerCase().split(RegExp(r'\s+'));
-    for (int i = 0; i < words.length; i++) {
-      final word = words[i].replaceAll(RegExp(r'[.,!?;:]'), '');
-      if (_commonIndianNames.contains(word)) {
-        return word[0].toUpperCase() + word.substring(1);
+    // Punctuation removed, original capitalization kept.
+    final words = text
+        .split(RegExp(r'\s+'))
+        .map((word) => word.replaceAll(RegExp(r'[.,!?;:]'), ''))
+        .toList();
+
+    // 1. Known names, matched case-insensitively ("rahul", "Rahul's").
+    for (final word in words) {
+      final lower = _withoutPossessive(word).toLowerCase();
+      if (_commonIndianNames.contains(lower)) {
+        return lower[0].toUpperCase() + lower.substring(1);
       }
     }
+
+    // 2. Other capitalized words, only when a cue says it is a person.
     for (int i = 0; i < words.length; i++) {
-      final word = words[i].replaceAll(RegExp(r'[.,!?;:]'), '');
-      if (word.length > 2 &&
-          word[0] == word[0].toUpperCase() &&
-          word[0] != word[0].toLowerCase() &&
-          !word.contains(RegExp(r'[0-9]'))) {
-        final lower = word.toLowerCase();
-        if (!_dateKeywords.contains(lower) &&
-            !_daysOfWeek.contains(lower) &&
-            !_months.contains(lower) &&
-            !['i', 'the', 'my', 'he', 'she', 'we'].contains(lower)) {
-          return word;
-        }
+      final name = _withoutPossessive(words[i]);
+      if (!_looksLikeName(name)) continue;
+      final before = i > 0 ? words[i - 1].toLowerCase() : '';
+      final after = i + 1 < words.length ? words[i + 1].toLowerCase() : '';
+      if (_isPossessive(words[i]) ||
+          _personCuesBefore.contains(before) ||
+          _personCuesAfter.contains(after)) {
+        return name;
       }
     }
     return null;
+  }
+
+  static bool _isPossessive(String word) =>
+      word.endsWith("'s") || word.endsWith('’s');
+
+  static String _withoutPossessive(String word) =>
+      _isPossessive(word) ? word.substring(0, word.length - 2) : word;
+
+  static bool _looksLikeName(String word) {
+    if (word.length <= 2) return false;
+    // Capitalized, letters only (no digits), and not an ALL-CAPS acronym.
+    if (!RegExp(r'^[A-Z][a-zA-Z]+$').hasMatch(word)) return false;
+    if (word == word.toUpperCase()) return false;
+    final lower = word.toLowerCase();
+    return !_dateKeywords.contains(lower) &&
+        !_daysOfWeek.contains(lower) &&
+        !_months.contains(lower) &&
+        !_nonNameWords.contains(lower);
   }
 
   static double? extractAmount(String text) {

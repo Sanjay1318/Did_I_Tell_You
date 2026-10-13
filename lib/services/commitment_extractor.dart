@@ -6,8 +6,10 @@ class Commitment {
 }
 
 class CommitmentExtractor {
+  // Accepts both the straight apostrophe (') and the curly one (’) that iOS and
+  // many Android keyboards type automatically.
   static final RegExp _commitment = RegExp(
-    r"\b(?:i(?:'ll| will| need to| have to)|remind me to|plan to)\s+(.+)",
+    r"\b(?:i(?:['’]ll| will| need to| have to)|remind me to|plan to)\s+(.+)",
     caseSensitive: false,
   );
 

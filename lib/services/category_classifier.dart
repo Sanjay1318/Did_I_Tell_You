@@ -215,13 +215,36 @@ class CategoryClassifier {
     ],
   };
 
+  // Endings accepted after a keyword so "meeting" still matches "meetings",
+  // "exam" matches "exams", and so on.
+  static const List<String> _suffixes = ['', 's', 'es', 'ed', 'ing'];
+
+  // Lower-cases the text and reduces it to space-separated words, padded with a
+  // space on both sides, so a keyword can be matched as a whole word. Without
+  // this, "hr" matched inside "three" and "pin" inside "spinach".
+  static String _normalize(String text) {
+    final cleaned = text.toLowerCase().replaceAll(RegExp(r'[^a-z0-9₹ ]+'), ' ');
+    final words = cleaned.split(' ').where((word) => word.isNotEmpty);
+    return ' ${words.join(' ')} ';
+  }
+
+  static bool _matchesKeyword(String normalized, String keyword) {
+    // The rupee symbol is written right next to the digits ("₹500"), so it
+    // cannot be matched as a separate word.
+    if (keyword == '₹') return normalized.contains('₹');
+    for (final suffix in _suffixes) {
+      if (normalized.contains(' $keyword$suffix ')) return true;
+    }
+    return false;
+  }
+
   static String classify(String text) {
-    final lower = text.toLowerCase();
+    final normalized = _normalize(text);
     final scores = <String, int>{};
 
     for (final entry in _categoryKeywords.entries) {
       for (final keyword in entry.value) {
-        if (lower.contains(keyword)) {
+        if (_matchesKeyword(normalized, keyword)) {
           scores[entry.key] = (scores[entry.key] ?? 0) + 1;
         }
       }

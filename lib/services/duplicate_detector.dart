@@ -25,6 +25,18 @@ class DuplicateDetector {
     return similarity > 0.35 && similarity <= 0.6;
   }
 
+  // Lower-cases the text, treats the curly apostrophe as a straight one, and
+  // reduces it to space-separated words padded with a space on both sides, so a
+  // phrase can be matched as whole words ("not" must not match "notebook").
+  static String _normalize(String text) {
+    final cleaned = text
+        .toLowerCase()
+        .replaceAll('’', "'")
+        .replaceAll(RegExp(r"[^a-z0-9' ]+"), ' ');
+    final words = cleaned.split(' ').where((word) => word.isNotEmpty);
+    return ' ${words.join(' ')} ';
+  }
+
   static bool mightContradict(String newText, String existingText) {
     final negations = [
       'not',
@@ -35,9 +47,11 @@ class DuplicateDetector {
       'changed',
       'moved'
     ];
+    final normalizedNew = _normalize(newText);
+    final normalizedExisting = _normalize(existingText);
     for (final neg in negations) {
-      if (newText.toLowerCase().contains(neg) ||
-          existingText.toLowerCase().contains(neg)) {
+      if (normalizedNew.contains(' $neg ') ||
+          normalizedExisting.contains(' $neg ')) {
         return true;
       }
     }

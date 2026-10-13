@@ -66,8 +66,21 @@ void main() {
 
     test('does not match keywords inside other words', () {
       expect(CategoryClassifier.classify('Three apples'), 'general');
-    }, skip: 'Known issue: matching is by substring, so "hr" inside "three" '
-        'scores as a work keyword.');
+    });
+
+    test('plural and -ed/-ing forms of a keyword still match', () {
+      expect(CategoryClassifier.classify('Meetings with the clients'), 'work');
+      expect(CategoryClassifier.classify('Studying for exams'), 'education');
+    });
+
+    test('the rupee symbol next to digits counts as money', () {
+      expect(CategoryClassifier.classify('Got ₹500'), 'money');
+    });
+
+    test('punctuation does not hide a keyword', () {
+      expect(CategoryClassifier.classify('Wifi, password: abc123!'),
+          'important');
+    });
   });
 
   group('CategoryClassifier helpers', () {

@@ -116,7 +116,28 @@ void main() {
         DuplicateDetector.mightContradict('Bought a notebook', 'Parked the car'),
         isFalse,
       );
-    }, skip: 'Known issue: negations are matched by substring, so "not" inside '
-        '"notebook" is treated as a negation.');
+    });
+
+    test('still flags a standalone "not" next to punctuation', () {
+      expect(
+        DuplicateDetector.mightContradict('Not today, maybe later', 'Gym today'),
+        isTrue,
+      );
+    });
+
+    test('flags a curly-apostrophe "don’t"', () {
+      expect(
+        DuplicateDetector.mightContradict(
+            'I don’t drink tea', 'I drink tea'),
+        isTrue,
+      );
+    });
+
+    test('flags the two-word phrase "no longer"', () {
+      expect(
+        DuplicateDetector.mightContradict('No longer at Infosys', 'Joined TCS'),
+        isTrue,
+      );
+    });
   });
 }
