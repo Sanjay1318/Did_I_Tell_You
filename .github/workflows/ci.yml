@@ -19,6 +19,9 @@ jobs:
         with:
           channel: stable
           cache: true
+      # The database tests run SQLite on the CI machine (sqflite_common_ffi).
+      - name: Install SQLite
+        run: sudo apt-get update && sudo apt-get install -y libsqlite3-0 libsqlite3-dev
       - run: flutter pub get
       # Infos (style hints) are reported but don't fail the build; warnings and errors do.
       - run: flutter analyze --no-fatal-infos
