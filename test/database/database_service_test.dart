@@ -51,16 +51,15 @@ void main() {
       });
     });
 
-    test('has the person, category and created_at indexes', () async {
+    test('has all five indexes', () async {
       final db = await service.database;
-      expect(
-        await indexNames(db),
-        containsAll([
-          'idx_memories_person',
-          'idx_memories_category',
-          'idx_memories_created_at',
-        ]),
-      );
+      expect(await indexNames(db), {
+        'idx_memories_person',
+        'idx_memories_category',
+        'idx_memories_created_at',
+        'idx_memories_status',
+        'idx_memories_task_status',
+      });
     });
 
     test('starts empty', () async {
@@ -435,10 +434,54 @@ void main() {
           .map((m) => m.originalText)
           .toList();
       expect(texts, ['Discount 50% off']);
-    },
-        skip: 'Known issue: the query goes into a LIKE pattern without '
-            'escaping, so "%" and "_" act as wildcards. "50%" also matches '
-            '"500 rupees", and "_" matches every memory.');
+    });
+
+    test('searching for a literal _ matches only text that contains it',
+        () async {
+      await service.insertMemory(makeMemory(text: 'snake_case'));
+      await service.insertMemory(makeMemory(text: 'plain text'));
+
+      final texts = (await service.searchMemories('_'))
+          .map((m) => m.originalText)
+          .toList();
+      expect(texts, ['snake_case']);
+    });
+
+    test('an underscore inside a query does not match other characters',
+        () async {
+      await service.insertMemory(makeMemory(text: 'file a_b.txt'));
+      await service.insertMemory(makeMemory(text: 'file axb.txt'));
+
+      final texts = (await service.searchMemories('a_b'))
+          .map((m) => m.originalText)
+          .toList();
+      expect(texts, ['file a_b.txt']);
+    });
+
+    test('a backslash in the query is searched for literally', () async {
+      await service.insertMemory(makeMemory(text: r'Saved in C:\temp notes'));
+      await service.insertMemory(makeMemory(text: 'Saved in C:temp notes'));
+
+      final texts = (await service.searchMemories(r'c:\temp'))
+          .map((m) => m.originalText)
+          .toList();
+      expect(texts, [r'Saved in C:\temp notes']);
+    });
+
+    test('% and _ also work when searching a person or location', () async {
+      await service.insertMemory(
+          makeMemory(text: 'first', person: 'Rahul_K', location: 'Pune'));
+      await service.insertMemory(
+          makeMemory(text: 'second', person: 'RahulXK', location: '100% Cafe'));
+
+      Future<List<String>> search(String query) async =>
+          (await service.searchMemories(query))
+              .map((m) => m.originalText)
+              .toList();
+
+      expect(await search('rahul_k'), ['first']);
+      expect(await search('100%'), ['second']);
+    });
   });
 
   group('getAllDistinctPersons', () {

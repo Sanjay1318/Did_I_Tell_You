@@ -53,6 +53,11 @@ class DatabaseService {
         .execute('CREATE INDEX idx_memories_category ON memories(category)');
     await db.execute(
         'CREATE INDEX idx_memories_created_at ON memories(created_at)');
+    // Databases upgraded from older versions get these two in _onUpgrade, so
+    // a brand-new database must have them too.
+    await db.execute('CREATE INDEX idx_memories_status ON memories(status)');
+    await db.execute(
+        'CREATE INDEX idx_memories_task_status ON memories(task_status)');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -126,12 +131,21 @@ class DatabaseService {
 
   Future<List<Memory>> searchMemories(String query) async {
     final db = await database;
-    // Use simple LIKE-based search across multiple fields
-    final likePattern = '%${query.toLowerCase()}%';
+    // Use simple LIKE-based search across multiple fields. In a LIKE pattern
+    // "%" and "_" are wildcards, so escape them (and the escape character
+    // itself) to search for what the user actually typed.
+    final escaped = query
+        .toLowerCase()
+        .replaceAll(r'\', r'\\')
+        .replaceAll('%', r'\%')
+        .replaceAll('_', r'\_');
+    final likePattern = '%$escaped%';
     final result = await db.query(
       'memories',
-      where:
-          "status = 'active' AND (LOWER(original_text) LIKE ? OR LOWER(person) LIKE ? OR LOWER(location) LIKE ?)",
+      where: "status = 'active' AND ("
+          "LOWER(original_text) LIKE ? ESCAPE '\\' OR "
+          "LOWER(person) LIKE ? ESCAPE '\\' OR "
+          "LOWER(location) LIKE ? ESCAPE '\\')",
       whereArgs: [likePattern, likePattern, likePattern],
       orderBy: 'created_at DESC',
     );
