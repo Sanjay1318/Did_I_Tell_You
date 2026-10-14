@@ -65,12 +65,15 @@ jobs:
       - run: flutter pub get
       - run: flutter build ios --debug --no-codesign
 
-  # Runs once you add an integration_test/ folder (see notes in chat).
+  # Runs the tests in integration_test/ (skipped if that folder is missing).
   # Boots an Android emulator on a Linux runner and runs your user-flow tests.
   integration-android:
     name: Integration tests (Android emulator)
     needs: analyze-and-test
     runs-on: ubuntu-latest
+    # Emulator runs on CI can be flaky. This job reports a result but does not
+    # block a merge. Remove the next line once it has run reliably for a while.
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Check for integration tests

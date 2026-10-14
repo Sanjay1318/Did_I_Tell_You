@@ -270,6 +270,11 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
           isPinned: _currentMemory.isPinned,
           reminderAt: _currentMemory.reminderAt,
           moneyStatus: _currentMemory.moneyStatus,
+          tags: _currentMemory.tags,
+          attachmentPaths: _currentMemory.attachmentPaths,
+          taskAction: _currentMemory.taskAction,
+          taskStatus: _currentMemory.taskStatus,
+          recurrence: _currentMemory.recurrence,
           metadata: _currentMemory.metadata,
         );
         final updatedSuccessfully = await context

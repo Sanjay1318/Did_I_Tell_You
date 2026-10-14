@@ -242,9 +242,10 @@ class EntityExtractor {
       if (lower.contains('last $day')) {
         final currentDay = now.weekday;
         final targetDay = _dayToInt(day);
+        // "last Friday" = the most recent Friday before today (1 to 7 days
+        // back; the same weekday means exactly a week ago).
         int diff = currentDay - targetDay;
         if (diff <= 0) diff += 7;
-        diff += 7;
         return now.subtract(Duration(days: diff)).toIso8601String();
       }
       if (lower.contains('this $day') || lower.contains('on $day')) {

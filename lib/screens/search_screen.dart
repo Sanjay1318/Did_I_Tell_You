@@ -4,6 +4,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import '../services/memory_service.dart';
 import '../models/memory.dart';
 import '../services/category_classifier.dart';
+import '../services/search_answer.dart';
 import 'memory_detail_screen.dart';
 import '../widgets/memory_card.dart';
 
@@ -55,7 +56,7 @@ class _SearchScreenState extends State<SearchScreen> {
         ? memoryService.memories
         : memoryService.parseNaturalQuery(query.trim());
     final results = _applyFilters(base);
-    final answer = _generateAnswer(query, results);
+    final answer = SearchAnswer.generate(query, results);
 
     setState(() {
       _searchResults = results;
@@ -204,55 +205,6 @@ class _SearchScreenState extends State<SearchScreen> {
     );
     min.dispose();
     max.dispose();
-  }
-
-  String _generateAnswer(String query, List<Memory> results) {
-    if (results.isEmpty) return '';
-    final lower = query.toLowerCase().trim();
-
-    if (lower.contains('who owes me') || lower.contains('who owe me')) {
-      final buffer = StringBuffer();
-      for (final memory in results) {
-        final person = memory.person ?? 'Someone';
-        final amount = memory.amount;
-        if (amount != null) {
-          buffer.writeln('$person owes you ₹${amount.toStringAsFixed(0)}');
-        } else {
-          buffer.writeln(memory.originalText);
-        }
-      }
-      return buffer.toString().trim();
-    }
-
-    if (lower.contains('what do i know about') ||
-        lower.contains('tell me about')) {
-      if (results.isNotEmpty) {
-        final firstMemory = results.first;
-        final person = firstMemory.person ?? 'this person';
-        return 'You have ${results.length} memories about $person.';
-      }
-    }
-
-    if (lower.contains('where did i park')) {
-      for (final memory in results) {
-        if (memory.originalText.toLowerCase().contains('park')) {
-          return 'You parked: ${memory.originalText}';
-        }
-      }
-    }
-
-    if (lower.contains('what food does') || lower.contains('what does')) {
-      for (final memory in results) {
-        if (memory.originalText.toLowerCase().contains('like') ||
-            memory.originalText.toLowerCase().contains('love') ||
-            memory.originalText.toLowerCase().contains('prefer') ||
-            memory.originalText.toLowerCase().contains('favorite')) {
-          return memory.originalText;
-        }
-      }
-    }
-
-    return 'Found ${results.length} memories.';
   }
 
   Future<void> _speakAnswer() async {

@@ -3,25 +3,35 @@ import 'package:local_auth/local_auth.dart';
 import 'package:provider/provider.dart';
 import '../services/settings_service.dart';
 
+/// Asks the device to verify the user. Returns true when they pass.
+typedef Authenticator = Future<bool> Function();
+
 class AppLock extends StatefulWidget {
   final Widget child;
-  const AppLock({super.key, required this.child});
+
+  /// Replaces the real device check. Used by tests.
+  final Authenticator? authenticator;
+
+  const AppLock({super.key, required this.child, this.authenticator});
 
   @override
   State<AppLock> createState() => _AppLockState();
 }
 
 class _AppLockState extends State<AppLock> {
-  final LocalAuthentication _auth = LocalAuthentication();
+  LocalAuthentication? _auth;
   bool _unlocked = false;
   bool _attempted = false;
 
   Future<void> _unlock() async {
     try {
-      final unlocked = await _auth.authenticate(
-        localizedReason: 'Unlock your private memories',
-        options: const AuthenticationOptions(biometricOnly: false),
-      );
+      final custom = widget.authenticator;
+      final unlocked = custom != null
+          ? await custom()
+          : await (_auth ??= LocalAuthentication()).authenticate(
+              localizedReason: 'Unlock your private memories',
+              options: const AuthenticationOptions(biometricOnly: false),
+            );
       if (mounted) {
         setState(() {
           _unlocked = unlocked;
