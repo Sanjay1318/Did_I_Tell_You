@@ -323,10 +323,7 @@ void main() {
       final freshIndexes = await indexNames(await fresh.database);
 
       expect(freshIndexes, upgradedIndexes);
-    },
-        skip: 'Known gap: a brand-new database does not get '
-            'idx_memories_status or idx_memories_task_status, which upgraded '
-            'databases do. _createTables should create them too.');
+    });
   });
 
   group('reopening a current database', () {
