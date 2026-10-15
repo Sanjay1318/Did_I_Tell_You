@@ -156,6 +156,59 @@ void main() {
       expect(parsed.difference(DateTime.now()).inDays, inInclusiveRange(0, 6));
     });
 
+    group('weekday phrases', () {
+      const days = {
+        'monday': DateTime.monday,
+        'tuesday': DateTime.tuesday,
+        'wednesday': DateTime.wednesday,
+        'thursday': DateTime.thursday,
+        'friday': DateTime.friday,
+        'saturday': DateTime.saturday,
+        'sunday': DateTime.sunday,
+      };
+
+      // Whole calendar days from the date in [iso] to today (negative if the
+      // date is in the future). Uses UTC midnights so daylight saving shifts
+      // cannot change the answer.
+      int daysBeforeToday(String iso) {
+        final parsed = DateTime.parse(iso);
+        final now = DateTime.now();
+        return DateTime.utc(now.year, now.month, now.day)
+            .difference(DateTime.utc(parsed.year, parsed.month, parsed.day))
+            .inDays;
+      }
+
+      days.forEach((name, weekday) {
+        test('"last $name" is the most recent $name, 1 to 7 days back', () {
+          final result = EntityExtractor.extractDate('Met him last $name');
+          expect(result, isNotNull);
+          expect(DateTime.parse(result!).weekday, weekday);
+          expect(daysBeforeToday(result), inInclusiveRange(1, 7));
+        });
+
+        test('"this $name" is that weekday, today or within the next 6 days',
+            () {
+          final result = EntityExtractor.extractDate('Meeting this $name');
+          expect(result, isNotNull);
+          expect(DateTime.parse(result!).weekday, weekday);
+          expect(daysBeforeToday(result), inInclusiveRange(-6, 0));
+        });
+      });
+
+      test('"last <weekday>" never lands in the future', () {
+        for (final name in days.keys) {
+          final result = EntityExtractor.extractDate('last $name')!;
+          expect(DateTime.parse(result).isBefore(DateTime.now()), isTrue,
+              reason: 'last $name');
+        }
+      });
+
+      test('weekday names are matched regardless of letter case', () {
+        final result = EntityExtractor.extractDate('See you LAST FRIDAY');
+        expect(DateTime.parse(result!).weekday, DateTime.friday);
+      });
+    });
+
     test('parses "Month day" with an ordinal suffix', () {
       final result = EntityExtractor.extractDate('Birthday party on December 25th');
       expect(result, isNotNull);

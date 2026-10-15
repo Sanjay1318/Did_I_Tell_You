@@ -1,9 +1,16 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 class ReminderService {
   ReminderService._();
+
+  /// Lets tests subclass this service with a fake that records calls instead
+  /// of talking to the phone's notification system.
+  @visibleForTesting
+  ReminderService.forTesting();
+
   static final ReminderService instance = ReminderService._();
 
   final FlutterLocalNotificationsPlugin _plugin =

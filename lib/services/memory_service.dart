@@ -10,11 +10,13 @@ import 'attachment_service.dart';
 
 class MemoryService extends ChangeNotifier {
   final DatabaseService _dbService;
+  final ReminderService _reminders;
   List<Memory> _memories = [];
   bool _isLoading = false;
   String? _error;
 
-  MemoryService(this._dbService);
+  MemoryService(this._dbService, {ReminderService? reminders})
+      : _reminders = reminders ?? ReminderService.instance;
 
   List<Memory> get memories => List.unmodifiable(_memories);
   bool get isLoading => _isLoading;
@@ -85,7 +87,7 @@ class MemoryService extends ChangeNotifier {
       final newMemory = memory.copyWith(id: id);
       if (reminderAt != null && reminderAt.isAfter(DateTime.now())) {
         try {
-          await ReminderService.instance.scheduleReminder(
+          await _reminders.scheduleReminder(
             id: id,
             title: 'Memory reminder',
             body: normalizedText,
@@ -228,9 +230,9 @@ class MemoryService extends ChangeNotifier {
     );
     return _replaceMemory(updated).then((saved) async {
       if (!saved || memory.id == null) return saved;
-      await ReminderService.instance.cancelReminder(memory.id!);
+      await _reminders.cancelReminder(memory.id!);
       if (reminderAt != null && reminderAt.isAfter(DateTime.now())) {
-        await ReminderService.instance.scheduleReminder(
+        await _reminders.scheduleReminder(
           id: memory.id!,
           title: 'Memory reminder',
           body: memory.originalText,
@@ -379,7 +381,9 @@ class MemoryService extends ChangeNotifier {
 
     if (diff == 0) return 'Today';
     if (diff == 1) return 'Yesterday';
-    if (diff < 7) {
+    // Within a week either side of today a weekday name is clear enough;
+    // further away it would be ambiguous, so show the full date.
+    if (diff < 7 && diff > -7) {
       const days = [
         'Monday',
         'Tuesday',

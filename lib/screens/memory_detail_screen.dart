@@ -124,44 +124,24 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
   }
 
   Future<void> _editTags() async {
-    final controller =
-        TextEditingController(text: _currentMemory.tags.join(', '));
-    final saved = await showDialog<bool>(
+    final text = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit tags'),
-        content: TextField(
-          controller: controller,
-          textCapitalization: TextCapitalization.words,
-          decoration:
-              const InputDecoration(hintText: 'Separate tags with commas'),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
-          FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Save')),
-        ],
-      ),
+      builder: (context) => _TagsDialog(initialText: _currentMemory.tags.join(', ')),
     );
-    if (saved == true && mounted) {
-      final tags = controller.text
-          .split(',')
-          .map((tag) => tag.trim())
-          .where((tag) => tag.isNotEmpty)
-          .toSet()
-          .toList();
-      final updated = _currentMemory.copyWith(tags: tags);
-      final updatedSuccessfully = await context
-          .read<MemoryService>()
-          .updateMemory(updated, reanalyze: false);
-      if (updatedSuccessfully && mounted) {
-        setState(() => _currentMemory = updated);
-      }
+    if (text == null || !mounted) return;
+    final tags = text
+        .split(',')
+        .map((tag) => tag.trim())
+        .where((tag) => tag.isNotEmpty)
+        .toSet()
+        .toList();
+    final updated = _currentMemory.copyWith(tags: tags);
+    final updatedSuccessfully = await context
+        .read<MemoryService>()
+        .updateMemory(updated, reanalyze: false);
+    if (updatedSuccessfully && mounted) {
+      setState(() => _currentMemory = updated);
     }
-    controller.dispose();
   }
 
   Future<void> _pickReminder() async {
@@ -192,98 +172,48 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
   }
 
   Future<void> _editExtractedDetails() async {
-    final person = TextEditingController(text: _currentMemory.person ?? '');
-    final amount = TextEditingController(
-        text: _currentMemory.amount?.toStringAsFixed(2) ?? '');
-    final date = TextEditingController(
-        text: _currentMemory.extractedDate?.split('T').first ?? '');
-    final location = TextEditingController(text: _currentMemory.location ?? '');
-    var category = _currentMemory.category;
-    final saved = await showDialog<bool>(
+    final edit = await showDialog<_DetailsEdit>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Correct extracted details'),
-          content: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextField(
-                  controller: person,
-                  decoration: const InputDecoration(labelText: 'Person')),
-              TextField(
-                controller: amount,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Amount'),
-              ),
-              TextField(
-                controller: date,
-                decoration:
-                    const InputDecoration(labelText: 'Date (YYYY-MM-DD)'),
-              ),
-              TextField(
-                  controller: location,
-                  decoration: const InputDecoration(labelText: 'Location')),
-              DropdownButtonFormField<String>(
-                initialValue: category,
-                decoration: const InputDecoration(labelText: 'Category'),
-                items: CategoryClassifier.getAllCategories()
-                    .map((value) => DropdownMenuItem(
-                          value: value,
-                          child:
-                              Text(CategoryClassifier.getCategoryLabel(value)),
-                        ))
-                    .toList(),
-                onChanged: (value) => setDialogState(() => category = value!),
-              ),
-            ]),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel')),
-            FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Save')),
-          ],
-        ),
-      ),
+      builder: (context) => _DetailsDialog(memory: _currentMemory),
     );
-    if (saved == true && mounted) {
-      final rawDate = date.text.trim();
-      final parsedDate = rawDate.isEmpty ? null : DateTime.tryParse(rawDate);
-      if (rawDate.isNotEmpty && parsedDate == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Use YYYY-MM-DD for the date.')),
-        );
-      } else {
-        final updated = Memory(
-          id: _currentMemory.id,
-          originalText: _currentMemory.originalText,
-          createdAt: _currentMemory.createdAt,
-          updatedAt: DateTime.now(),
-          category: category,
-          person: person.text.trim().isEmpty ? null : person.text.trim(),
-          amount: double.tryParse(amount.text.trim()),
-          extractedDate: parsedDate?.toIso8601String(),
-          location: location.text.trim().isEmpty ? null : location.text.trim(),
-          status: _currentMemory.status,
-          isPinned: _currentMemory.isPinned,
-          reminderAt: _currentMemory.reminderAt,
-          moneyStatus: _currentMemory.moneyStatus,
-          metadata: _currentMemory.metadata,
-        );
-        final updatedSuccessfully = await context
-            .read<MemoryService>()
-            .updateMemory(updated, reanalyze: false);
-        if (updatedSuccessfully && mounted) {
-          setState(() => _currentMemory = updated);
-        }
-      }
+    if (edit == null || !mounted) return;
+    final rawDate = edit.date.trim();
+    final parsedDate = rawDate.isEmpty ? null : DateTime.tryParse(rawDate);
+    if (rawDate.isNotEmpty && parsedDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Use YYYY-MM-DD for the date.')),
+      );
+      return;
     }
-    person.dispose();
-    amount.dispose();
-    date.dispose();
-    location.dispose();
+    // Built by hand (not copyWith) so that person, amount, date and location
+    // can be cleared; every other field is carried over unchanged.
+    final updated = Memory(
+      id: _currentMemory.id,
+      originalText: _currentMemory.originalText,
+      createdAt: _currentMemory.createdAt,
+      updatedAt: DateTime.now(),
+      category: edit.category,
+      person: edit.person.trim().isEmpty ? null : edit.person.trim(),
+      amount: double.tryParse(edit.amount.trim()),
+      extractedDate: parsedDate?.toIso8601String(),
+      location: edit.location.trim().isEmpty ? null : edit.location.trim(),
+      status: _currentMemory.status,
+      isPinned: _currentMemory.isPinned,
+      reminderAt: _currentMemory.reminderAt,
+      moneyStatus: _currentMemory.moneyStatus,
+      tags: _currentMemory.tags,
+      attachmentPaths: _currentMemory.attachmentPaths,
+      taskAction: _currentMemory.taskAction,
+      taskStatus: _currentMemory.taskStatus,
+      recurrence: _currentMemory.recurrence,
+      metadata: _currentMemory.metadata,
+    );
+    final updatedSuccessfully = await context
+        .read<MemoryService>()
+        .updateMemory(updated, reanalyze: false);
+    if (updatedSuccessfully && mounted) {
+      setState(() => _currentMemory = updated);
+    }
   }
 
   @override
@@ -628,5 +558,147 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
       'December',
     ];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+}
+
+/// The "Edit tags" dialog. It owns its text field so the field is disposed
+/// only after the dialog has finished closing. Pops the typed text on Save and
+/// nothing on Cancel.
+class _TagsDialog extends StatefulWidget {
+  final String initialText;
+  const _TagsDialog({required this.initialText});
+
+  @override
+  State<_TagsDialog> createState() => _TagsDialogState();
+}
+
+class _TagsDialogState extends State<_TagsDialog> {
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.initialText);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Edit tags'),
+      content: TextField(
+        controller: _controller,
+        textCapitalization: TextCapitalization.words,
+        decoration: const InputDecoration(hintText: 'Separate tags with commas'),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel')),
+        FilledButton(
+            onPressed: () => Navigator.pop(context, _controller.text),
+            child: const Text('Save')),
+      ],
+    );
+  }
+}
+
+class _DetailsEdit {
+  final String person;
+  final String amount;
+  final String date;
+  final String location;
+  final String category;
+  const _DetailsEdit({
+    required this.person,
+    required this.amount,
+    required this.date,
+    required this.location,
+    required this.category,
+  });
+}
+
+/// The "Correct extracted details" dialog; pops a [_DetailsEdit] on Save.
+class _DetailsDialog extends StatefulWidget {
+  final Memory memory;
+  const _DetailsDialog({required this.memory});
+
+  @override
+  State<_DetailsDialog> createState() => _DetailsDialogState();
+}
+
+class _DetailsDialogState extends State<_DetailsDialog> {
+  late final TextEditingController _person =
+      TextEditingController(text: widget.memory.person ?? '');
+  late final TextEditingController _amount = TextEditingController(
+      text: widget.memory.amount?.toStringAsFixed(2) ?? '');
+  late final TextEditingController _date = TextEditingController(
+      text: widget.memory.extractedDate?.split('T').first ?? '');
+  late final TextEditingController _location =
+      TextEditingController(text: widget.memory.location ?? '');
+  late String _category = widget.memory.category;
+
+  @override
+  void dispose() {
+    _person.dispose();
+    _amount.dispose();
+    _date.dispose();
+    _location.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Correct extracted details'),
+      content: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(
+              controller: _person,
+              decoration: const InputDecoration(labelText: 'Person')),
+          TextField(
+            controller: _amount,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(labelText: 'Amount'),
+          ),
+          TextField(
+            controller: _date,
+            decoration: const InputDecoration(labelText: 'Date (YYYY-MM-DD)'),
+          ),
+          TextField(
+              controller: _location,
+              decoration: const InputDecoration(labelText: 'Location')),
+          DropdownButtonFormField<String>(
+            initialValue: _category,
+            decoration: const InputDecoration(labelText: 'Category'),
+            items: CategoryClassifier.getAllCategories()
+                .map((value) => DropdownMenuItem(
+                      value: value,
+                      child: Text(CategoryClassifier.getCategoryLabel(value)),
+                    ))
+                .toList(),
+            onChanged: (value) => setState(() => _category = value!),
+          ),
+        ]),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel')),
+        FilledButton(
+          onPressed: () => Navigator.pop(
+            context,
+            _DetailsEdit(
+              person: _person.text,
+              amount: _amount.text,
+              date: _date.text,
+              location: _location.text,
+              category: _category,
+            ),
+          ),
+          child: const Text('Save'),
+        ),
+      ],
+    );
   }
 }

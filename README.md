@@ -107,6 +107,12 @@ Automated tests currently cover:
 - Entity extraction, category classification, and duplicate detection.
 - Local database behavior (`test/database/`): create, read, update and delete; filters, search and ordering; persistence across restarts; and upgrades from schema versions 1, 2 and 3 to the current version without losing data. These run against SQLite on the development machine via `sqflite_common_ffi`, so they need no phone or emulator.
 
+- Services (`test/services/`): `MemoryService` (saving, duplicate detection, import/export round trips, follow-ups, reminders, pin/archive, day labels, natural-language questions), search answers, CSV/JSON export and import parsing, settings, and attachment deletion. These use an in-memory fake database and a fake reminder service (`test/helpers/fakes.dart`).
+- Screens and widgets (`test/widgets/`): home, add memory, search, memory detail, settings, the memory card, app lock (with a stand-in for the device check) and tab navigation.
+- One end-to-end test (`integration_test/`) that runs the real app on a phone or emulator: add a memory, then find it by searching, and check it survives a restart. Run it with `flutter test integration_test`.
+
+Not covered by automated tests, so check by hand on a device: voice input, camera/gallery, real notification delivery, the device's fingerprint/PIN prompt, sharing an export file and picking a backup file.
+
 Before every release, also manually verify:
 
 1. Database upgrade with existing data.
