@@ -1,4 +1,5 @@
 import 'package:did_i_tell_you/app.dart';
+import 'package:did_i_tell_you/screens/home_screen.dart';
 import 'package:did_i_tell_you/services/memory_service.dart';
 import 'package:did_i_tell_you/services/settings_service.dart';
 import 'package:flutter/material.dart';
@@ -25,11 +26,12 @@ Finder _tab(String label) => find.descendant(
       matching: find.text(label),
     );
 
-// The Search tab's sort dropdown contains an IndexedStack of its own, so pick
-// out the one that holds the four tabs.
+// The Search tab's sort dropdown contains an IndexedStack of its own (also with
+// four children), so pick out the one that holds the screens.
 int _selectedTab(WidgetTester tester) => tester
-    .widget<IndexedStack>(find.byWidgetPredicate(
-        (widget) => widget is IndexedStack && widget.children.length == 4))
+    .widget<IndexedStack>(find.byWidgetPredicate((widget) =>
+        widget is IndexedStack &&
+        widget.children.any((child) => child is HomeScreen)))
     .index!;
 
 void main() {
