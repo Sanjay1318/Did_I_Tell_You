@@ -52,7 +52,12 @@ class MemoryCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 8),
-                    Row(
+                    // A Wrap, not a Row: on a narrow phone the person chip, the
+                    // amount chip and the time can be wider than the card.
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         if (memory.person != null &&
                             memory.person!.isNotEmpty) ...[
@@ -73,7 +78,6 @@ class MemoryCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 6),
                         ],
                         if (memory.amount != null) ...[
                           Container(
@@ -92,7 +96,6 @@ class MemoryCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 6),
                         ],
                         Text(
                           _formatRelativeTime(memory.createdAt),

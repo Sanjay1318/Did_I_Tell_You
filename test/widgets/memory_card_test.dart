@@ -68,6 +68,35 @@ void main() {
     expect(find.text('📝'), findsOneWidget);
   });
 
+  testWidgets('does not overflow on a narrow screen with every chip showing',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            width: 230,
+            child: MemoryCard(
+              memory: makeMemory(
+                text: 'I lent Rahul 500 rupees',
+                person: 'Rahul Venkata',
+                amount: 12500,
+                category: 'money',
+                createdAt: DateTime.now(),
+              ),
+              onTap: () {},
+            ),
+          ),
+        ),
+      ),
+    ));
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('👤 Rahul Venkata'), findsOneWidget);
+    expect(find.text('💰 ₹12500.0'), findsOneWidget);
+    expect(find.text('Just now'), findsOneWidget);
+  });
+
   testWidgets('calls onTap when pressed', (tester) async {
     var taps = 0;
     await pumpCard(

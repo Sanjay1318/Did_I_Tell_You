@@ -58,6 +58,21 @@ Future<void> _waitFor(
   }
 }
 
+/// Taps "Save Memory". On a small phone screen the button can be below the
+/// part of the list that is drawn, so scroll to it first.
+Future<void> _tapSave(WidgetTester tester) async {
+  final save = find.text('Save Memory');
+  await tester.scrollUntilVisible(
+    save,
+    200,
+    scrollable: find
+        .descendant(
+            of: find.byType(ListView), matching: find.byType(Scrollable))
+        .first,
+  );
+  await tester.tap(save);
+}
+
 Finder _tab(String label) => find.descendant(
       of: find.byType(NavigationBar),
       matching: find.text(label),
@@ -76,7 +91,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).first, _note);
     await tester.pump();
-    await tester.tap(find.text('Save Memory'));
+    await _tapSave(tester);
     await _waitFor(tester, find.text('🧠 Memory saved!'));
     await tester.pumpAndSettle();
 
@@ -114,7 +129,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).first, _note);
     await tester.pump();
-    await tester.tap(find.text('Save Memory'));
+    await _tapSave(tester);
     await _waitFor(tester, find.text('🧠 Memory saved!'));
     await tester.pumpAndSettle();
 
