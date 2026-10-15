@@ -100,111 +100,29 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Future<void> _showFilters() async {
-    final service = context.read<MemoryService>();
-    final min = TextEditingController(text: _minimumAmount?.toString() ?? '');
-    final max = TextEditingController(text: _maximumAmount?.toString() ?? '');
-    var category = _category;
-    var person = _person;
-    var dateRange = _dateRange;
-    await showModalBottomSheet<void>(
+    final result = await showModalBottomSheet<_FilterValues>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => Padding(
-          padding: EdgeInsets.fromLTRB(
-              20, 20, 20, 20 + MediaQuery.viewInsetsOf(context).bottom),
-          child: Wrap(children: [
-            Row(children: [
-              const Expanded(
-                  child: Text('Filter memories',
-                      style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold))),
-              TextButton(
-                  onPressed: () => setSheetState(() {
-                        category = null;
-                        person = null;
-                        dateRange = null;
-                        min.clear();
-                        max.clear();
-                      }),
-                  child: const Text('Clear')),
-            ]),
-            DropdownButtonFormField<String?>(
-              initialValue: category,
-              decoration: const InputDecoration(labelText: 'Category'),
-              items: [
-                const DropdownMenuItem(
-                    value: null, child: Text('All categories')),
-                ...CategoryClassifier.getAllCategories().map((value) =>
-                    DropdownMenuItem(
-                        value: value,
-                        child:
-                            Text(CategoryClassifier.getCategoryLabel(value))))
-              ],
-              onChanged: (value) => setSheetState(() => category = value),
-            ),
-            DropdownButtonFormField<String?>(
-              initialValue: person,
-              decoration: const InputDecoration(labelText: 'Person'),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('All people')),
-                ...service.getAllPersons().map((value) =>
-                    DropdownMenuItem(value: value, child: Text(value)))
-              ],
-              onChanged: (value) => setSheetState(() => person = value),
-            ),
-            Row(children: [
-              Expanded(
-                  child: TextField(
-                      controller: min,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      decoration:
-                          const InputDecoration(labelText: 'Minimum amount'))),
-              const SizedBox(width: 12),
-              Expanded(
-                  child: TextField(
-                      controller: max,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      decoration:
-                          const InputDecoration(labelText: 'Maximum amount'))),
-            ]),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(dateRange == null
-                  ? 'Any date'
-                  : '${dateRange!.start.toLocal().toString().split(' ').first} – ${dateRange!.end.toLocal().toString().split(' ').first}'),
-              trailing: const Icon(Icons.date_range),
-              onTap: () async {
-                final picked = await showDateRangePicker(
-                    context: context,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime.now());
-                if (picked != null) setSheetState(() => dateRange = picked);
-              },
-            ),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed: () {
-                setState(() {
-                  _category = category;
-                  _person = person;
-                  _dateRange = dateRange;
-                  _minimumAmount = double.tryParse(min.text);
-                  _maximumAmount = double.tryParse(max.text);
-                });
-                Navigator.pop(context);
-                _performSearch(_searchController.text);
-              },
-              child: const Text('Apply filters'),
-            ),
-          ]),
+      builder: (context) => _FiltersSheet(
+        people: context.read<MemoryService>().getAllPersons(),
+        current: _FilterValues(
+          category: _category,
+          person: _person,
+          dateRange: _dateRange,
+          minimum: _minimumAmount,
+          maximum: _maximumAmount,
         ),
       ),
     );
-    min.dispose();
-    max.dispose();
+    if (result == null || !mounted) return;
+    setState(() {
+      _category = result.category;
+      _person = result.person;
+      _dateRange = result.dateRange;
+      _minimumAmount = result.minimum;
+      _maximumAmount = result.maximum;
+    });
+    _performSearch(_searchController.text);
   }
 
   Future<void> _speakAnswer() async {
@@ -401,6 +319,142 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _FilterValues {
+  final String? category;
+  final String? person;
+  final DateTimeRange? dateRange;
+  final double? minimum;
+  final double? maximum;
+  const _FilterValues({
+    this.category,
+    this.person,
+    this.dateRange,
+    this.minimum,
+    this.maximum,
+  });
+}
+
+/// The filter bottom sheet. It owns its text fields so they are disposed only
+/// after the sheet has finished closing. Pops the chosen [_FilterValues] when
+/// "Apply filters" is pressed, and nothing if the sheet is dismissed.
+class _FiltersSheet extends StatefulWidget {
+  final List<String> people;
+  final _FilterValues current;
+  const _FiltersSheet({required this.people, required this.current});
+
+  @override
+  State<_FiltersSheet> createState() => _FiltersSheetState();
+}
+
+class _FiltersSheetState extends State<_FiltersSheet> {
+  late final TextEditingController _min = TextEditingController(
+      text: widget.current.minimum?.toString() ?? '');
+  late final TextEditingController _max = TextEditingController(
+      text: widget.current.maximum?.toString() ?? '');
+  late String? _category = widget.current.category;
+  late String? _person = widget.current.person;
+  late DateTimeRange? _dateRange = widget.current.dateRange;
+
+  @override
+  void dispose() {
+    _min.dispose();
+    _max.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dateRange = _dateRange;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          20, 20, 20, 20 + MediaQuery.viewInsetsOf(context).bottom),
+      child: Wrap(children: [
+        Row(children: [
+          const Expanded(
+              child: Text('Filter memories',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+          TextButton(
+              onPressed: () => setState(() {
+                    _category = null;
+                    _person = null;
+                    _dateRange = null;
+                    _min.clear();
+                    _max.clear();
+                  }),
+              child: const Text('Clear')),
+        ]),
+        DropdownButtonFormField<String?>(
+          initialValue: _category,
+          decoration: const InputDecoration(labelText: 'Category'),
+          items: [
+            const DropdownMenuItem(value: null, child: Text('All categories')),
+            ...CategoryClassifier.getAllCategories().map((value) =>
+                DropdownMenuItem(
+                    value: value,
+                    child: Text(CategoryClassifier.getCategoryLabel(value))))
+          ],
+          onChanged: (value) => setState(() => _category = value),
+        ),
+        DropdownButtonFormField<String?>(
+          initialValue: _person,
+          decoration: const InputDecoration(labelText: 'Person'),
+          items: [
+            const DropdownMenuItem(value: null, child: Text('All people')),
+            ...widget.people.map(
+                (value) => DropdownMenuItem(value: value, child: Text(value)))
+          ],
+          onChanged: (value) => setState(() => _person = value),
+        ),
+        Row(children: [
+          Expanded(
+              child: TextField(
+                  controller: _min,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration:
+                      const InputDecoration(labelText: 'Minimum amount'))),
+          const SizedBox(width: 12),
+          Expanded(
+              child: TextField(
+                  controller: _max,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration:
+                      const InputDecoration(labelText: 'Maximum amount'))),
+        ]),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(dateRange == null
+              ? 'Any date'
+              : '${dateRange.start.toLocal().toString().split(' ').first} – ${dateRange.end.toLocal().toString().split(' ').first}'),
+          trailing: const Icon(Icons.date_range),
+          onTap: () async {
+            final picked = await showDateRangePicker(
+                context: context,
+                firstDate: DateTime(2000),
+                lastDate: DateTime.now());
+            if (picked != null) setState(() => _dateRange = picked);
+          },
+        ),
+        const SizedBox(height: 12),
+        FilledButton(
+          onPressed: () => Navigator.pop(
+            context,
+            _FilterValues(
+              category: _category,
+              person: _person,
+              dateRange: _dateRange,
+              minimum: double.tryParse(_min.text),
+              maximum: double.tryParse(_max.text),
+            ),
+          ),
+          child: const Text('Apply filters'),
+        ),
+      ]),
     );
   }
 }

@@ -25,8 +25,12 @@ Finder _tab(String label) => find.descendant(
       matching: find.text(label),
     );
 
-int _selectedTab(WidgetTester tester) =>
-    tester.widget<IndexedStack>(find.byType(IndexedStack)).index!;
+// The Search tab's sort dropdown contains an IndexedStack of its own, so pick
+// out the one that holds the four tabs.
+int _selectedTab(WidgetTester tester) => tester
+    .widget<IndexedStack>(find.byWidgetPredicate(
+        (widget) => widget is IndexedStack && widget.children.length == 4))
+    .index!;
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
