@@ -98,6 +98,40 @@ Future<void> _writeLegacyV3(
   await db.close();
 }
 
+/// Writes a database file shaped like the first version 4 builds: all the
+/// version 4 columns, but without the status and task_status indexes (those
+/// were only added to a brand-new database later).
+Future<void> _writeEarlyV4(
+  String path, {
+  List<Map<String, Object?>> rows = const [],
+}) async {
+  final db = await databaseFactory.openDatabase(
+    path,
+    options: OpenDatabaseOptions(
+      version: 4,
+      onCreate: (db, _) async {
+        await db.execute('''
+          CREATE TABLE memories (
+            $_baseColumns
+            $_v3Columns
+            tags TEXT NOT NULL DEFAULT '[]',
+            attachment_paths TEXT NOT NULL DEFAULT '[]',
+            task_action TEXT,
+            task_status TEXT NOT NULL DEFAULT 'none',
+            recurrence TEXT,
+            metadata TEXT DEFAULT '{}'
+          )
+        ''');
+        await _createBaseIndexes(db);
+        for (final row in rows) {
+          await db.insert('memories', row);
+        }
+      },
+    ),
+  );
+  await db.close();
+}
+
 Map<String, Object?> _legacyRow({
   required String text,
   required String createdAt,
@@ -163,9 +197,9 @@ void main() {
       ]);
     });
 
-    test('moves the database to version 4', () async {
+    test('moves the database to version 5', () async {
       final db = await service.database;
-      expect(await schemaVersion(db), 4);
+      expect(await schemaVersion(db), 5);
     });
 
     test('keeps every row and every existing value', () async {
@@ -253,9 +287,9 @@ void main() {
         ]);
       });
 
-      test('moves the database to version 4', () async {
+      test('moves the database to version 5', () async {
         final db = await service.database;
-        expect(await schemaVersion(db), 4);
+        expect(await schemaVersion(db), 5);
       });
 
       test('keeps the rows, including archived ones', () async {
@@ -326,6 +360,35 @@ void main() {
     });
   });
 
+  group('upgrading from an early version 4 without the status indexes', () {
+    setUp(() async {
+      await _writeEarlyV4(temp.dbPath, rows: [
+        {
+          ..._legacyRow(text: 'Call Priya', createdAt: '2026-01-01T00:00:00.000Z'),
+          'tags': '["family"]',
+          'task_action': 'Call Priya',
+          'task_status': 'pending',
+        },
+      ]);
+    });
+
+    test('adds the missing indexes and moves to version 5', () async {
+      final db = await service.database;
+      expect(await schemaVersion(db), 5);
+      expect(
+        await indexNames(db),
+        containsAll(['idx_memories_status', 'idx_memories_task_status']),
+      );
+    });
+
+    test('keeps the rows untouched', () async {
+      final memory = (await service.getAllMemories()).single;
+      expect(memory.originalText, 'Call Priya');
+      expect(memory.tags, ['family']);
+      expect(memory.taskStatus, 'pending');
+    });
+  });
+
   group('reopening a current database', () {
     test('does not change or lose data', () async {
       await service.insertMemory(makeMemory(text: 'first', tags: ['x']));
@@ -334,7 +397,7 @@ void main() {
       final reopened = DatabaseService();
       addTearDown(reopened.close);
 
-      expect(await schemaVersion(await reopened.database), 4);
+      expect(await schemaVersion(await reopened.database), 5);
       final memories = await reopened.getAllMemories();
       expect(memories.map((m) => m.originalText), ['first']);
       expect(memories.single.tags, ['x']);

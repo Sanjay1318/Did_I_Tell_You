@@ -16,7 +16,7 @@ class DatabaseService {
     final path = join(dbPath, 'memory_app.db');
     _database = await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _createTables,
       onUpgrade: _onUpgrade,
     );
@@ -53,8 +53,6 @@ class DatabaseService {
         .execute('CREATE INDEX idx_memories_category ON memories(category)');
     await db.execute(
         'CREATE INDEX idx_memories_created_at ON memories(created_at)');
-    // Databases upgraded from older versions get these two in _onUpgrade, so
-    // a brand-new database must have them too.
     await db.execute('CREATE INDEX idx_memories_status ON memories(status)');
     await db.execute(
         'CREATE INDEX idx_memories_task_status ON memories(task_status)');
@@ -83,6 +81,15 @@ class DatabaseService {
       await db.execute(
           "ALTER TABLE memories ADD COLUMN task_status TEXT NOT NULL DEFAULT 'none'");
       await db.execute('ALTER TABLE memories ADD COLUMN recurrence TEXT');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_memories_task_status ON memories(task_status)');
+    }
+    if (oldVersion < 5) {
+      // Databases created at version 4 before these indexes were added to
+      // _createTables never got them. IF NOT EXISTS makes this safe for
+      // databases that already have them.
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_memories_status ON memories(status)');
       await db.execute(
           'CREATE INDEX IF NOT EXISTS idx_memories_task_status ON memories(task_status)');
     }

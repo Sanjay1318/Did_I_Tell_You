@@ -20,9 +20,9 @@ void main() {
   });
 
   group('fresh database', () {
-    test('is created at schema version 4', () async {
+    test('is created at schema version 5', () async {
       final db = await service.database;
-      expect(await schemaVersion(db), 4);
+      expect(await schemaVersion(db), 5);
     });
 
     test('has every expected column', () async {
