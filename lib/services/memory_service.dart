@@ -137,7 +137,7 @@ class MemoryService extends ChangeNotifier {
             ? CommitmentExtractor.extract(text)?.action
             : memory.taskAction,
         taskStatus: reanalyze
-            ? CommitmentExtractor.extract(text)?.status ?? 'none'
+            ? _reanalyzedTaskStatus(memory, text)
             : memory.taskStatus,
         recurrence: memory.recurrence,
         metadata: reanalyze
@@ -157,6 +157,14 @@ class MemoryService extends ChangeNotifier {
       debugPrint('updateMemory error: $e');
       return false;
     }
+  }
+
+  /// Editing the wording of a follow-up that is already completed must not
+  /// reopen it. A follow-up that the new text no longer contains is dropped.
+  String _reanalyzedTaskStatus(Memory memory, String text) {
+    final commitment = CommitmentExtractor.extract(text);
+    if (commitment == null) return 'none';
+    return memory.taskStatus == 'completed' ? 'completed' : commitment.status;
   }
 
   Future<bool> deleteMemory(int id) async {

@@ -246,6 +246,69 @@ void main() {
       expect(t.db.rows.single.originalText, 'Paid Priya 200 rupees');
     });
 
+    group('follow-up status when the text is edited', () {
+      test('a completed follow-up stays completed if it is still a follow-up',
+          () async {
+        final original = makeMemory(
+          id: 1,
+          text: 'I will call the bank',
+          taskAction: 'call the bank',
+          taskStatus: 'completed',
+        );
+        final t = await makeService([original]);
+
+        await t.service.updateMemory(
+            original.copyWith(originalText: 'I will call the bank on Monday'));
+
+        final updated = t.service.memories.single;
+        expect(updated.taskStatus, 'completed');
+        expect(updated.taskAction, 'call the bank on Monday');
+      });
+
+      test('a pending follow-up stays pending', () async {
+        final original = makeMemory(
+          id: 1,
+          text: 'I will call the bank',
+          taskAction: 'call the bank',
+          taskStatus: 'pending',
+        );
+        final t = await makeService([original]);
+
+        await t.service.updateMemory(
+            original.copyWith(originalText: 'I will email the bank'));
+
+        expect(t.service.memories.single.taskStatus, 'pending');
+      });
+
+      test('a note that becomes a follow-up starts as pending', () async {
+        final original = makeMemory(id: 1, text: 'Bank closes at five');
+        final t = await makeService([original]);
+
+        await t.service.updateMemory(
+            original.copyWith(originalText: 'I will visit the bank'));
+
+        expect(t.service.memories.single.taskStatus, 'pending');
+      });
+
+      test('editing the follow-up away clears it, even if it was completed',
+          () async {
+        final original = makeMemory(
+          id: 1,
+          text: 'I will call the bank',
+          taskAction: 'call the bank',
+          taskStatus: 'completed',
+        );
+        final t = await makeService([original]);
+
+        await t.service
+            .updateMemory(original.copyWith(originalText: 'Bank closes at five'));
+
+        final updated = t.service.memories.single;
+        expect(updated.taskStatus, 'none');
+        expect(updated.taskAction, isNull);
+      });
+    });
+
     test('with reanalyze off, hand-corrected details are kept', () async {
       final original = makeMemory(
           id: 1, text: 'Met someone', person: 'Zed', category: 'people');
