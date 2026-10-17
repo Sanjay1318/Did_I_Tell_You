@@ -4,6 +4,7 @@ import 'database_service.dart';
 import 'entity_extractor.dart';
 import 'category_classifier.dart';
 import 'duplicate_detector.dart';
+import 'recurrence.dart';
 import 'reminder_service.dart';
 import 'commitment_extractor.dart';
 import 'attachment_service.dart';
@@ -92,6 +93,7 @@ class MemoryService extends ChangeNotifier {
             title: 'Memory reminder',
             body: normalizedText,
             scheduledTime: reminderAt,
+            repeat: recurrence,
           );
         } catch (e) {
           debugPrint('scheduleReminder error: $e');
@@ -237,18 +239,88 @@ class MemoryService extends ChangeNotifier {
       metadata: memory.metadata,
     );
     return _replaceMemory(updated).then((saved) async {
-      if (!saved || memory.id == null) return saved;
-      await _reminders.cancelReminder(memory.id!);
-      if (reminderAt != null && reminderAt.isAfter(DateTime.now())) {
-        await _reminders.scheduleReminder(
-          id: memory.id!,
-          title: 'Memory reminder',
-          body: memory.originalText,
-          scheduledTime: reminderAt,
-        );
-      }
+      if (!saved) return saved;
+      await _rescheduleReminder(updated);
       return saved;
     });
+  }
+
+  /// Replaces the phone notification for [memory] with one that matches its
+  /// current reminder time and repeat setting.
+  Future<void> _rescheduleReminder(Memory memory) async {
+    final id = memory.id;
+    if (id == null) return;
+    await _reminders.cancelReminder(id);
+    final reminderAt = DateTime.tryParse(memory.reminderAt ?? '');
+    if (reminderAt == null) return;
+    final repeat = memory.recurrence;
+    // A repeating reminder whose first time has passed carries on from its
+    // next occurrence instead of being dropped.
+    final when = repeat != null
+        ? Recurrence.next(reminderAt, repeat)
+        : (reminderAt.isAfter(DateTime.now()) ? reminderAt : null);
+    if (when == null) return;
+    await _reminders.scheduleReminder(
+      id: id,
+      title: 'Memory reminder',
+      body: memory.originalText,
+      scheduledTime: when,
+      repeat: repeat,
+    );
+  }
+
+  /// Makes the reminder repeat ([Recurrence.values]) or fire once (null).
+  Future<bool> setRecurrence(Memory memory, String? recurrence) async {
+    if (!Recurrence.isValid(recurrence)) return false;
+    final updated = Memory(
+      id: memory.id,
+      originalText: memory.originalText,
+      createdAt: memory.createdAt,
+      updatedAt: DateTime.now(),
+      category: memory.category,
+      person: memory.person,
+      amount: memory.amount,
+      extractedDate: memory.extractedDate,
+      location: memory.location,
+      status: memory.status,
+      isPinned: memory.isPinned,
+      reminderAt: memory.reminderAt,
+      moneyStatus: memory.moneyStatus,
+      tags: memory.tags,
+      attachmentPaths: memory.attachmentPaths,
+      taskAction: memory.taskAction,
+      taskStatus: memory.taskStatus,
+      recurrence: recurrence,
+      metadata: memory.metadata,
+    );
+    final saved = await _replaceMemory(updated);
+    if (saved) await _rescheduleReminder(updated);
+    return saved;
+  }
+
+  /// When a follow-up is due: its reminder time, otherwise the end of the day
+  /// found in its text. Null if it has neither.
+  static DateTime? dueTime(Memory memory) {
+    final reminder = DateTime.tryParse(memory.reminderAt ?? '');
+    if (reminder != null) return reminder;
+    final date = DateTime.tryParse(memory.extractedDate ?? '');
+    if (date == null) return null;
+    return DateTime(date.year, date.month, date.day, 23, 59, 59);
+  }
+
+  /// Whether [memory] is a pending follow-up whose due time has passed.
+  static bool isOverdue(Memory memory, {DateTime? now}) {
+    if (memory.taskStatus != 'pending') return false;
+    final due = dueTime(memory);
+    return due != null && due.isBefore(now ?? DateTime.now());
+  }
+
+  /// Pending follow-ups that are past due, the longest overdue first.
+  List<Memory> get overdueFollowUps {
+    final now = DateTime.now();
+    final overdue = _memories.where((m) => isOverdue(m, now: now)).toList();
+    overdue.sort((a, b) => dueTime(a)!.compareTo(dueTime(b)!));
+    return overdue;
   }
 
   Future<bool> _replaceMemory(Memory updated) async {
@@ -499,11 +571,65 @@ class MemoryService extends ChangeNotifier {
       }
     }
 
-    return _memories
+    final exact = _memories
         .where((m) =>
             m.originalText.toLowerCase().contains(lower) ||
             m.tags.any((tag) => tag.toLowerCase().contains(lower)))
         .toList();
+    if (exact.isNotEmpty) return exact;
+    return _keywordMatches(lower);
+  }
+
+  // Words that carry no meaning in a question, on top of the usual stop words.
+  static const Set<String> _fillerWords = {
+    'know',
+    'tell',
+    'remember',
+    'show',
+    'find',
+    'everything',
+    'anything',
+    'something',
+    'much',
+    'many',
+    'long',
+    'time',
+    'last',
+    'there',
+    'again',
+  };
+
+  /// Memories that share words with a question such as "where did I put my
+  /// keys", best match first and newest first among equals. Tried only when
+  /// the whole question is not found word for word.
+  List<Memory> _keywordMatches(String lowerQuery) {
+    final words = <String>{};
+    for (final word in EntityExtractor.extractKeywords(lowerQuery)) {
+      if (_fillerWords.contains(word)) continue;
+      // "keys" should also find "key", so match on the singular.
+      words.add(word.length > 4 && word.endsWith('s')
+          ? word.substring(0, word.length - 1)
+          : word);
+    }
+    if (words.isEmpty) return [];
+
+    final scored = <({Memory memory, int score, int order})>[];
+    for (var i = 0; i < _memories.length; i++) {
+      final memory = _memories[i];
+      final text = [
+        memory.originalText,
+        memory.person ?? '',
+        memory.location ?? '',
+        ...memory.tags,
+      ].join(' ').toLowerCase();
+      final score = words.where(text.contains).length;
+      if (score > 0) scored.add((memory: memory, score: score, order: i));
+    }
+    scored.sort((a, b) {
+      final byScore = b.score.compareTo(a.score);
+      return byScore != 0 ? byScore : a.order.compareTo(b.order);
+    });
+    return [for (final item in scored) item.memory];
   }
 
   Map<String, List<Memory>> getUpcomingReminders() {
