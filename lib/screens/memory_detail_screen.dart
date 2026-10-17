@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/memory.dart';
 import '../services/memory_service.dart';
 import '../services/category_classifier.dart';
+import '../services/recurrence.dart';
 
 class MemoryDetailScreen extends StatefulWidget {
   final Memory memory;
@@ -168,6 +169,73 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     if (saved && mounted) {
       setState(() => _currentMemory =
           _currentMemory.copyWith(reminderAt: reminder.toIso8601String()));
+    }
+  }
+
+  Future<void> _snooze() async {
+    final delay = await showDialog<Duration>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Remind me again'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, const Duration(hours: 1)),
+            child: const Text('In 1 hour'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, const Duration(hours: 3)),
+            child: const Text('In 3 hours'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, _untilTomorrowMorning()),
+            child: const Text('Tomorrow at 9:00'),
+          ),
+        ],
+      ),
+    );
+    if (delay == null || !mounted) return;
+    final target = DateTime.now().add(delay);
+    final saved =
+        await context.read<MemoryService>().setReminder(_currentMemory, target);
+    if (saved && mounted) {
+      setState(() => _currentMemory =
+          _currentMemory.copyWith(reminderAt: target.toIso8601String()));
+    }
+  }
+
+  /// The time from now until 9:00 tomorrow morning.
+  Duration _untilTomorrowMorning() {
+    final now = DateTime.now();
+    final tomorrow = DateTime(now.year, now.month, now.day + 1, 9);
+    return tomorrow.difference(now);
+  }
+
+  Future<void> _pickRepeat() async {
+    // 'none' stands for a reminder that does not repeat; dismissing the
+    // dialog (null) changes nothing.
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Repeat reminder'),
+        children: [
+          for (final option in [null, ...Recurrence.values])
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, option ?? 'none'),
+              child: Text(Recurrence.label(option)),
+            ),
+        ],
+      ),
+    );
+    if (choice == null || !mounted) return;
+    final recurrence = choice == 'none' ? null : choice;
+    final saved = await context
+        .read<MemoryService>()
+        .setRecurrence(_currentMemory, recurrence);
+    if (saved && mounted) {
+      setState(() => _currentMemory = _currentMemory.copyWith(
+            recurrence: recurrence,
+            clearRecurrence: recurrence == null,
+          ));
     }
   }
 
@@ -467,6 +535,22 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
             label: Text(
                 memory.reminderAt == null ? 'Add reminder' : 'Change reminder'),
           ),
+          if (memory.reminderAt != null || memory.taskStatus == 'pending') ...[
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _snooze,
+              icon: const Icon(Icons.snooze),
+              label: const Text('Snooze'),
+            ),
+          ],
+          if (memory.reminderAt != null) ...[
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _pickRepeat,
+              icon: const Icon(Icons.repeat),
+              label: Text(Recurrence.label(memory.recurrence)),
+            ),
+          ],
           if (memory.person != null && memory.person!.isNotEmpty) ...[
             const SizedBox(height: 20),
             FilledButton.icon(

@@ -48,6 +48,7 @@ class ReminderService {
     required String title,
     required String body,
     required DateTime scheduledTime,
+    String? repeat,
   }) async {
     const androidDetails = AndroidNotificationDetails(
       'memory_reminders',
@@ -69,9 +70,25 @@ class ReminderService {
       tz.TZDateTime.from(scheduledTime, tz.local),
       details,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      matchDateTimeComponents: _repeatComponents(repeat),
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
     );
+  }
+
+  /// Which parts of the scheduled time the phone should match again and again.
+  /// Null means the reminder fires once.
+  static DateTimeComponents? _repeatComponents(String? repeat) {
+    switch (repeat) {
+      case 'daily':
+        return DateTimeComponents.time;
+      case 'weekly':
+        return DateTimeComponents.dayOfWeekAndTime;
+      case 'monthly':
+        return DateTimeComponents.dayOfMonthAndTime;
+      default:
+        return null;
+    }
   }
 
   Future<void> cancelReminder(int id) async {

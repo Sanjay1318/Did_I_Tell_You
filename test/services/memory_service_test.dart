@@ -15,6 +15,7 @@ class _FailingReminders extends FakeReminderService {
     required String title,
     required String body,
     required DateTime scheduledTime,
+    String? repeat,
   }) async {
     throw StateError('notifications unavailable');
   }

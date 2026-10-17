@@ -144,6 +144,7 @@ class Memory {
     String? taskAction,
     String? taskStatus,
     String? recurrence,
+    bool clearRecurrence = false,
     Map<String, dynamic>? metadata,
   }) {
     return Memory(
@@ -164,7 +165,7 @@ class Memory {
       attachmentPaths: attachmentPaths ?? this.attachmentPaths,
       taskAction: taskAction ?? this.taskAction,
       taskStatus: taskStatus ?? this.taskStatus,
-      recurrence: recurrence ?? this.recurrence,
+      recurrence: clearRecurrence ? null : (recurrence ?? this.recurrence),
       metadata: metadata ?? this.metadata,
     );
   }

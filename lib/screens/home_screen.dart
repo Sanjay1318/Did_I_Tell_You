@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/memory.dart';
 import '../services/memory_service.dart';
 import '../widgets/memory_card.dart';
 import 'add_memory_screen.dart';
 import 'all_memories_screen.dart';
 import 'memory_detail_screen.dart';
 import 'search_screen.dart';
+
+String _followUpSubtitle(Memory memory, DateTime now) {
+  final base =
+      memory.person == null ? 'Pending' : 'With ${memory.person}';
+  return MemoryService.isOverdue(memory, now: now) ? 'Overdue · $base' : base;
+}
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -14,10 +21,14 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final memories = context.watch<MemoryService>().memories;
     final recent = memories.take(3).toList();
-    final pending = memories
-        .where((memory) => memory.taskStatus == 'pending')
-        .take(2)
-        .toList();
+    final allPending =
+        memories.where((memory) => memory.taskStatus == 'pending').toList();
+    final now = DateTime.now();
+    // Overdue follow-ups come first so they are not buried.
+    final pending = [
+      ...allPending.where((m) => MemoryService.isOverdue(m, now: now)),
+      ...allPending.where((m) => !MemoryService.isOverdue(m, now: now)),
+    ].take(2).toList();
 
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
@@ -51,11 +62,12 @@ class HomeScreen extends StatelessWidget {
               for (final memory in pending)
                 Card(
                   child: ListTile(
-                    leading: const Icon(Icons.pending_actions_outlined),
+                    leading: MemoryService.isOverdue(memory, now: now)
+                        ? Icon(Icons.warning_amber_rounded,
+                            color: Theme.of(context).colorScheme.error)
+                        : const Icon(Icons.pending_actions_outlined),
                     title: Text(memory.taskAction ?? memory.originalText),
-                    subtitle: Text(memory.person == null
-                        ? 'Pending'
-                        : 'With ${memory.person}'),
+                    subtitle: Text(_followUpSubtitle(memory, now)),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.push(
                       context,

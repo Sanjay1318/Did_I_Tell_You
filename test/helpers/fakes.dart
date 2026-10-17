@@ -85,7 +85,8 @@ class FakeDatabaseService extends DatabaseService {
 class FakeReminderService extends ReminderService {
   FakeReminderService() : super.forTesting();
 
-  final List<({int id, String body, DateTime time})> scheduled = [];
+  final List<({int id, String body, DateTime time, String? repeat})> scheduled =
+      [];
   final List<int> cancelled = [];
 
   @override
@@ -94,8 +95,9 @@ class FakeReminderService extends ReminderService {
     required String title,
     required String body,
     required DateTime scheduledTime,
+    String? repeat,
   }) async {
-    scheduled.add((id: id, body: body, time: scheduledTime));
+    scheduled.add((id: id, body: body, time: scheduledTime, repeat: repeat));
   }
 
   @override
