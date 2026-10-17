@@ -5,6 +5,85 @@ import '../services/export_service.dart';
 import '../services/settings_service.dart';
 import 'archived_memories_screen.dart';
 
+void _say(BuildContext context, String message) {
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+    content: Text(message),
+    behavior: SnackBarBehavior.floating,
+  ));
+}
+
+String _memories(int count) => count == 1 ? '1 memory' : '$count memories';
+
+Future<void> _exportBackup(BuildContext context) async {
+  final service = context.read<MemoryService>();
+  try {
+    final memories = await service.allMemoriesForBackup();
+    if (memories.isEmpty) {
+      _say(context, 'There is nothing to export yet.');
+      return;
+    }
+    await ExportService.exportBackup(memories);
+  } catch (_) {
+    _say(context, 'Could not export the backup.');
+  }
+}
+
+Future<void> _importBackup(BuildContext context) async {
+  final service = context.read<MemoryService>();
+  try {
+    final backup = await ExportService.pickBackup();
+    if (backup == null || !context.mounted) return;
+    final preview = await service.previewImport(backup.memories);
+    if (!context.mounted) return;
+    if (preview.newMemories.isEmpty) {
+      _say(
+        context,
+        backup.memories.isEmpty
+            ? 'That backup has no memories.'
+            : 'Nothing new to import: all ${_memories(preview.duplicates)} '
+                'in this backup are already here.',
+      );
+      return;
+    }
+    final photos = preview.newMemories
+        .expand((memory) => memory.attachmentPaths)
+        .where(backup.files.containsKey)
+        .length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Import this backup?'),
+        content: Text([
+          '${_memories(preview.newMemories.length)} will be added.',
+          if (preview.duplicates > 0)
+            '${_memories(preview.duplicates)} already here will be skipped.',
+          if (photos > 0) '$photos ${photos == 1 ? 'photo' : 'photos'} included.',
+        ].join('\n')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Import'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    final toImport =
+        await ExportService.restorePhotos(backup, preview.newMemories);
+    final imported = await service.importMemories(toImport);
+    _say(context, '${_memories(imported)} imported.');
+  } on FormatException catch (error) {
+    _say(context, error.message);
+  } catch (_) {
+    _say(context, 'Could not import that backup.');
+  }
+}
+
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
@@ -85,47 +164,16 @@ class SettingsScreen extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.share, color: Colors.blue),
                   title: const Text('Export as JSON'),
-                  subtitle: const Text('Share a full backup'),
-                  onTap: () async {
-                    if (memoryCount == 0) return;
-                    await ExportService.exportToJson(memoryService.memories);
-                  },
+                  subtitle:
+                      const Text('Share a full backup, with archived and photos'),
+                  onTap: () => _exportBackup(context),
                 ),
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.upload_file, color: Colors.blue),
                   title: const Text('Import JSON backup'),
                   subtitle: const Text('Restore memories from a prior export'),
-                  onTap: () async {
-                    try {
-                      final backup = await ExportService.pickJsonBackup();
-                      if (backup == null || !context.mounted) return;
-                      final imported = await context
-                          .read<MemoryService>()
-                          .importMemories(backup);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text('$imported memories imported.'),
-                          behavior: SnackBarBehavior.floating,
-                        ));
-                      }
-                    } on FormatException catch (error) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text(error.message),
-                          behavior: SnackBarBehavior.floating,
-                        ));
-                      }
-                    } catch (_) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context)
-                            .showSnackBar(const SnackBar(
-                          content: Text('Could not import that backup.'),
-                          behavior: SnackBarBehavior.floating,
-                        ));
-                      }
-                    }
-                  },
+                  onTap: () => _importBackup(context),
                 ),
                 const Divider(height: 1),
                 ListTile(

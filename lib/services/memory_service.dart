@@ -353,15 +353,40 @@ class MemoryService extends ChangeNotifier {
   Future<List<Memory>> getArchivedMemories() =>
       _dbService.getArchivedMemories();
 
+  /// Every memory for a backup: the ones on screen and the archived ones.
+  Future<List<Memory>> allMemoriesForBackup() async =>
+      [..._memories, ...await _dbService.getArchivedMemories()];
+
+  static String _importKey(Memory memory) =>
+      '${memory.originalText.trim().toLowerCase()}'
+      '|${memory.createdAt.microsecondsSinceEpoch}';
+
+  /// Sorts the memories of a backup into those that would be added and those
+  /// that are already here (same text and time, archived ones included, or a
+  /// repeat inside the backup itself). Changes nothing.
+  Future<ImportPreview> previewImport(List<Memory> memories) async {
+    final seen = <String>{
+      for (final memory in _memories) _importKey(memory),
+      for (final memory in await _dbService.getArchivedMemories())
+        _importKey(memory),
+    };
+    final fresh = <Memory>[];
+    var duplicates = 0;
+    for (final memory in memories) {
+      if (seen.add(_importKey(memory))) {
+        fresh.add(memory);
+      } else {
+        duplicates++;
+      }
+    }
+    return ImportPreview(fresh, duplicates);
+  }
+
   Future<int> importMemories(List<Memory> memories) async {
     var imported = 0;
     try {
-      for (final memory in memories) {
-        final exists = _memories.any((existing) =>
-            existing.originalText.trim().toLowerCase() ==
-                memory.originalText.trim().toLowerCase() &&
-            existing.createdAt == memory.createdAt);
-        if (exists) continue;
+      final preview = await previewImport(memories);
+      for (final memory in preview.newMemories) {
         final importedMemory = Memory(
           originalText: memory.originalText,
           createdAt: memory.createdAt,
@@ -383,8 +408,17 @@ class MemoryService extends ChangeNotifier {
           metadata: memory.metadata,
         );
         final id = await _dbService.insertMemory(importedMemory);
-        if (importedMemory.status == 'active') {
-          _memories.add(importedMemory.copyWith(id: id));
+        final saved = importedMemory.copyWith(id: id);
+        if (saved.status == 'active') {
+          _memories.add(saved);
+          // Notifications do not travel in a backup, so set them up again.
+          if (DateTime.tryParse(saved.reminderAt ?? '') != null) {
+            try {
+              await _rescheduleReminder(saved);
+            } catch (e) {
+              debugPrint('importMemories reminder error: $e');
+            }
+          }
         }
         imported++;
       }
@@ -645,4 +679,15 @@ class MemoryService extends ChangeNotifier {
     }
     return upcoming;
   }
+}
+
+/// The outcome of checking a backup against what is already in the app.
+class ImportPreview {
+  const ImportPreview(this.newMemories, this.duplicates);
+
+  /// Memories that would be added.
+  final List<Memory> newMemories;
+
+  /// How many memories in the backup are already here and would be skipped.
+  final int duplicates;
 }
