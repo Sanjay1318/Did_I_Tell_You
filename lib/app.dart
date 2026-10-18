@@ -7,6 +7,59 @@ import 'screens/timeline_screen.dart';
 import 'screens/search_screen.dart';
 import 'screens/settings_screen.dart';
 
+const Color _seedColor = Color(0xFF6750A4);
+
+/// The app's look in light or dark. Both are built from the same purple so
+/// that dark mode is a real theme, not just Flutter's default dark colours.
+ThemeData buildAppTheme(Brightness brightness) {
+  final dark = brightness == Brightness.dark;
+  final scheme = ColorScheme.fromSeed(
+    seedColor: _seedColor,
+    brightness: brightness,
+  );
+  final surface = dark ? scheme.surfaceContainer : Colors.white;
+  final outline = dark ? scheme.outlineVariant : Colors.grey.shade200;
+  return ThemeData(
+    useMaterial3: true,
+    colorScheme: scheme,
+    scaffoldBackgroundColor: dark ? scheme.surface : const Color(0xFFF8F9FA),
+    cardTheme: CardThemeData(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: outline),
+      ),
+      color: surface,
+    ),
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: surface,
+      indicatorColor: dark
+          ? scheme.secondaryContainer
+          : _seedColor.withValues(alpha: 0.12),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: surface,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: outline),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(
+          color: dark ? scheme.primary : _seedColor,
+          width: 1.5,
+        ),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+    ),
+  );
+}
+
 class MemoryApp extends StatelessWidget {
   const MemoryApp({super.key});
 
@@ -16,44 +69,8 @@ class MemoryApp extends StatelessWidget {
     return MaterialApp(
       title: 'Did I Already Tell You?',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6750A4),
-          brightness: Brightness.light,
-        ),
-        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
-        cardTheme: CardThemeData(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: Colors.grey.shade200),
-          ),
-          color: Colors.white,
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.grey.shade200),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(
-              color: Color(0xFF6750A4),
-              width: 1.5,
-            ),
-          ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-        ),
-      ),
-      darkTheme: ThemeData.dark(useMaterial3: true),
+      theme: buildAppTheme(Brightness.light),
+      darkTheme: buildAppTheme(Brightness.dark),
       themeMode: settings.darkMode ? ThemeMode.dark : ThemeMode.light,
       home: const AppLock(child: MainNavigation()),
     );
@@ -86,8 +103,6 @@ class _MainNavigationState extends State<MainNavigation> {
         onDestinationSelected: (index) {
           setState(() => _currentIndex = index);
         },
-        backgroundColor: Colors.white,
-        indicatorColor: const Color(0xFF6750A4).withValues(alpha: 0.12),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),

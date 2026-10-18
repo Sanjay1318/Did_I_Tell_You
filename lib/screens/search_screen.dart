@@ -145,6 +145,9 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final answerColor =
+        dark ? const Color(0xFFA5D6A7) : const Color(0xFF2E7D32);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Search'),
@@ -226,7 +229,7 @@ class _SearchScreenState extends State<SearchScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Card(
-                color: const Color(0xFFE8F5E9),
+                color: dark ? const Color(0xFF1B3A1F) : const Color(0xFFE8F5E9),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Row(
@@ -237,18 +240,20 @@ class _SearchScreenState extends State<SearchScreen> {
                       Expanded(
                         child: Text(
                           _answer,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w500,
-                            color: Color(0xFF2E7D32),
+                            color: answerColor,
                           ),
                         ),
                       ),
                       IconButton(
                         onPressed: _speakAnswer,
+                        tooltip:
+                            _isSpeaking ? 'Stop reading' : 'Read answer aloud',
                         icon: Icon(
                           _isSpeaking ? Icons.stop : Icons.volume_up,
-                          color: const Color(0xFF2E7D32),
+                          color: answerColor,
                         ),
                       ),
                     ],
