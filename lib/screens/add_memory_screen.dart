@@ -158,6 +158,9 @@ class _AddMemoryScreenState extends State<AddMemoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final warningColor =
+        dark ? const Color(0xFFFFB74D) : const Color(0xFFE65100);
     final text = _textController.text.trim();
     final person = text.isNotEmpty ? EntityExtractor.extractPerson(text) : null;
     final amount = text.isNotEmpty ? EntityExtractor.extractAmount(text) : null;
@@ -198,6 +201,9 @@ class _AddMemoryScreenState extends State<AddMemoryScreen> {
                           'e.g., "I lent Rahul ₹500 yesterday", "Priya\'s birthday is December 10"',
                       suffixIcon: IconButton(
                         onPressed: _toggleListening,
+                        tooltip: _isListening
+                            ? 'Stop listening'
+                            : 'Start voice input',
                         icon: Icon(
                           _isListening ? Icons.mic : Icons.mic_none,
                           color: _isListening
@@ -282,17 +288,17 @@ class _AddMemoryScreenState extends State<AddMemoryScreen> {
           if (_duplicateMessage != null) ...[
             const SizedBox(height: 16),
             Card(
-              color: const Color(0xFFFFF3E0),
+              color: dark ? const Color(0xFF3E2A10) : const Color(0xFFFFF3E0),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    const Icon(Icons.warning_amber, color: Color(0xFFE65100)),
+                    Icon(Icons.warning_amber, color: warningColor),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         _duplicateMessage!,
-                        style: const TextStyle(color: Color(0xFFE65100)),
+                        style: TextStyle(color: warningColor),
                       ),
                     ),
                   ],
