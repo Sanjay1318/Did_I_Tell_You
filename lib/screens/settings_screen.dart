@@ -19,12 +19,14 @@ Future<void> _exportBackup(BuildContext context) async {
   final service = context.read<MemoryService>();
   try {
     final memories = await service.allMemoriesForBackup();
+    if (!context.mounted) return;
     if (memories.isEmpty) {
       _say(context, 'There is nothing to export yet.');
       return;
     }
     await ExportService.exportBackup(memories);
   } catch (_) {
+    if (!context.mounted) return;
     _say(context, 'Could not export the backup.');
   }
 }
@@ -76,10 +78,13 @@ Future<void> _importBackup(BuildContext context) async {
     final toImport =
         await ExportService.restorePhotos(backup, preview.newMemories);
     final imported = await service.importMemories(toImport);
+    if (!context.mounted) return;
     _say(context, '${_memories(imported)} imported.');
   } on FormatException catch (error) {
+    if (!context.mounted) return;
     _say(context, error.message);
   } catch (_) {
+    if (!context.mounted) return;
     _say(context, 'Could not import that backup.');
   }
 }

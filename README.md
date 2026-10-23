@@ -30,7 +30,7 @@ The current product is designed for on-device Android and iOS use. It does not r
 
 ### Extraction and follow-ups
 
-The app uses local rule-based extraction. It can detect common people names, amounts, dates, locations, keywords, and categories. It also recognizes simple commitment phrasing such as `I'll send the resume tomorrow`, stores it as a pending follow-up, and lets the user mark it complete or reopen it.
+The app uses local rule-based extraction. It can detect common people names, amounts, dates, locations, keywords, and categories. It also recognizes simple commitment phrasing such as `I'll send the resume tomorrow`, stores it as a pending follow-up, and lets the user complete, reopen, or snooze it.
 
 Built-in categories are General, Money, People, Events, Purchases, Places, Entertainment, Work, Education, and Important.
 
@@ -45,17 +45,17 @@ Built-in categories are General, Money, People, Events, Purchases, Places, Enter
 ### Reminders and money tracking
 
 - Select a date and time for an on-device local notification.
-- Change a reminder from the memory detail screen.
+- Change, snooze, or repeat a reminder daily, weekly, or monthly.
 - Mark money-related memories as open or settled.
-- View pending follow-ups and weekly capture activity from the dashboard.
+- View pending, overdue, and upcoming follow-ups from the dashboard.
 
 ### Privacy and device controls
 
 - Local SQLite storage.
 - Optional dark mode.
 - Optional app lock using the device's existing authentication method.
-- JSON and CSV export.
-- JSON import with basic validation and duplicate-aware restoration.
+- Full JSON backup with attached photos, plus CSV export.
+- Backup import preview, validation, duplicate-aware restoration, and reminder restoration.
 
 ## How data is handled
 
@@ -103,8 +103,8 @@ Use `flutter devices` to see available devices. Run on a physical Android device
 Automated tests currently cover:
 
 - Memory serialization and database-compatible numeric values.
-- New persisted model fields such as pins, reminders, settlement state, tags, attachments, and task state.
-- Entity extraction, category classification, and duplicate detection.
+- Persisted pin, reminder, settlement, tag, attachment, task, and recurrence state.
+- Entity extraction, category classification, duplicate detection, recurrence calculations, and grounded search answers.
 - Local database behavior (`test/database/`): create, read, update and delete; filters, search and ordering; persistence across restarts; and upgrades from schema versions 1, 2 and 3 to the current version without losing data. These run against SQLite on the development machine via `sqflite_common_ffi`, so they need no phone or emulator.
 
 - Services (`test/services/`): `MemoryService` (saving, duplicate detection, import/export round trips, follow-ups, reminders, pin/archive, day labels, natural-language questions), search answers, CSV/JSON export and import parsing, settings, and attachment deletion. These use an in-memory fake database and a fake reminder service (`test/helpers/fakes.dart`).
@@ -125,12 +125,13 @@ Before every release, also manually verify:
 
 ## Database migrations
 
-The local database is currently schema version 4. Migration code must remain in place after shipping because existing installations upgrade in place.
+The local database is currently schema version 5. Migration code must remain in place after shipping because existing installations upgrade in place.
 
 | Version | Added |
 | --- | --- |
 | 3 | Pin state, reminder timestamp, and money settlement status |
 | 4 | Tags, attachment paths, task action/status, and recurrence metadata |
+| 5 | Missing status and task-status indexes for databases created by earlier releases |
 
 ## Release checklist
 
@@ -151,8 +152,7 @@ flutter build appbundle --release
 
 ## Known limitations
 
-- Image attachments are stored locally, but JSON/CSV export preserves only their metadata/path. It is not a portable image backup. Do not rely on export as the only backup for attached images.
-- Commitment recognition is intentionally simple. It does not yet provide recurring scheduling, snooze actions, or advanced intent understanding.
+- Commitment recognition is intentionally simple; it does not provide advanced intent understanding.
 - Search is keyword and rule based. Similar wording is not semantically matched unless it shares terms, tags, or known query patterns.
 - There are no user accounts, cloud sync, account deletion flow, remote authorization, database encryption, or multi-device support.
 - Automated tests do not replace physical-device validation.
