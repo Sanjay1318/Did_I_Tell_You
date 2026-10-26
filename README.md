@@ -1,171 +1,202 @@
 # Did I Tell You?
 
-**Did I Tell You?** is a private, local-first Flutter memory assistant. It helps people capture something once and retrieve it later through natural-language questions, structured filters, people views, reminders, and follow-ups.
+[![CI](https://github.com/Sanjay1318/Did_I_Tell_You/actions/workflows/ci.yml/badge.svg)](https://github.com/Sanjay1318/Did_I_Tell_You/actions/workflows/ci.yml)
 
-The current product is designed for on-device Android and iOS use. It does not require an account, server, analytics service, or internet connection to store and search memories.
+**Did I Tell You?** is a private, local-first memory assistant for Android and iOS, built with Flutter. You tell it something once ("I lent Rahul ₹500", "parked at Forum Mall", "I'll send the resume tomorrow") and ask for it back later in plain language.
+
+Everything stays on the phone. There is no account, server, analytics or internet connection needed to save and search memories.
 
 ## Contents
 
-- [Capabilities](#capabilities)
+- [Features](#features)
 - [How data is handled](#how-data-is-handled)
-- [Supported platforms](#supported-platforms)
+- [Screens](#screens)
 - [Architecture](#architecture)
-- [Local development](#local-development)
+- [Getting started](#getting-started)
 - [Testing](#testing)
-- [Database migrations](#database-migrations)
+- [Database and backups](#database-and-backups)
 - [Release checklist](#release-checklist)
 - [Known limitations](#known-limitations)
-- [Planned cloud and AI phase](#planned-cloud-and-ai-phase)
+- [Roadmap](#roadmap)
 
-## Capabilities
+## Features
 
 ### Capture and organize
 
-- Create memories from typed text or speech-to-text input.
-- Add custom comma-separated tags.
-- Attach a photo or screenshot from the camera or device gallery.
-- Pin important memories and archive/restore older entries.
-- Edit original text and manually correct extracted person, amount, date, location, and category values.
-- Delete individual memories or all locally stored memories.
+- Save memories by typing, by speech-to-text, or with a photo from the camera or gallery.
+- Add comma-separated tags, pin important memories, and archive or restore old ones.
+- Edit a memory's text and correct the detected person, amount, date, location and category by hand.
+- A warning appears if a new memory looks like a duplicate of, or contradicts, an existing one.
+- Delete one memory or everything.
 
-### Extraction and follow-ups
+### Automatic understanding (rule-based, on the device)
 
-The app uses local rule-based extraction. It can detect common people names, amounts, dates, locations, keywords, and categories. It also recognizes simple commitment phrasing such as `I'll send the resume tomorrow`, stores it as a pending follow-up, and lets the user complete, reopen, or snooze it.
+- Detects people, amounts, dates, locations, keywords and one of ten categories: General, Money, People, Events, Purchases, Places, Entertainment, Work, Education and Important.
+- Recognises commitments such as `I'll send the resume tomorrow` and turns them into pending follow-ups.
+- Editing the wording of a completed follow-up keeps it completed; removing the commitment from the text clears it.
 
-Built-in categories are General, Money, People, Events, Purchases, Places, Entertainment, Work, Education, and Important.
+### Search and questions
 
-### Search and discovery
+- Ask questions such as "who owes me", "what do I know about Priya", "where did I park", "what happened yesterday" or "last week".
+- Questions that are not word for word in a memory still work: "where did I put my keys" matches on the meaningful words, ignores filler words, matches plurals, and ranks memories that match more words first.
+- Written answers above the results, which can be read aloud.
+- Filters for category, person, date range and minimum/maximum amount; sorting by newest, oldest or amount.
+- Timeline, All memories, People and Archived views.
 
-- Keyword search across memory text and custom tags.
-- Rule-based natural-language questions for common requests such as people, money, today, yesterday, last week, and categories.
-- Filters by category, person, date range, minimum amount, and maximum amount.
-- Sorting by newest, oldest, highest amount, or lowest amount.
-- Timeline, recent-memory, people, and upcoming-reminder views.
+### Reminders and follow-ups
 
-### Reminders and money tracking
+- Local notifications at a date and time you choose.
+- **Snooze** a reminder for 1 hour, 3 hours or until 9:00 tomorrow.
+- **Repeat** a reminder daily, weekly or monthly. A monthly reminder on the 31st falls on the last day of shorter months.
+- Pending follow-ups are listed on the home screen; **overdue** ones come first with a warning marker.
+- Money memories can be marked open or settled.
 
-- Select a date and time for an on-device local notification.
-- Change, snooze, or repeat a reminder daily, weekly, or monthly.
-- Mark money-related memories as open or settled.
-- View pending, overdue, and upcoming follow-ups from the dashboard.
+### Privacy, backup and appearance
 
-### Privacy and device controls
-
-- Local SQLite storage.
-- Optional dark mode.
-- Optional app lock using the device's existing authentication method.
-- Full JSON backup with attached photos, plus CSV export.
-- Backup import preview, validation, duplicate-aware restoration, and reminder restoration.
+- Optional app lock using the phone's own screen lock or biometrics.
+- **Full JSON backup**: every memory (archived ones included) and its photos in one file. Older list-only backups can still be imported.
+- **Import preview** before anything changes: how many memories are new, how many are already here and will be skipped, and how many photos are included. Imported reminders are scheduled again.
+- CSV export for spreadsheets.
+- Light and dark themes (the dark theme is a full theme, including the bottom bar), and a custom app icon with an Android adaptive version.
 
 ## How data is handled
 
-Memory records, app preferences, reminder state, and attachments are kept on the device. The app currently has no login, cloud synchronization, telemetry, advertising SDK, or remote AI request.
+Memories, settings, reminder state and attachments are stored on the device. The app has no login, cloud sync, telemetry, advertising SDK or remote AI requests.
 
-Exports may contain sensitive information. Share them only through trusted destinations. App Lock delegates to the device screen lock; the app does not store a PIN, biometric template, or authentication secret.
+Backups and exports contain personal information and photos. Share them only with trusted destinations. App lock hands the check to the device; the app stores no PIN, fingerprint or secret of its own. The database file itself is not encrypted.
 
-## Supported platforms
+## Screens
 
-Android and iOS are the intended release platforms. Web and desktop folders are Flutter scaffolding only; do not distribute them until storage, import/export, notifications, and authentication have equivalent platform support.
+| Screen | What it does |
+| --- | --- |
+| Home | Greeting, "Ask your memory", quick capture, follow-ups (overdue first) and recent memories |
+| Add memory | Text, voice, photo, tags, optional reminder, live preview of what was detected, duplicate warning |
+| Search | Natural-language questions, filters, sorting, spoken answer |
+| Timeline | Memories grouped by day |
+| Memory detail | Edit, pin, archive, delete, tags, photos, follow-up status, reminder, snooze, repeat, settle money |
+| Person | Everything about one person, with a category breakdown |
+| All memories | Browse with category and person filters |
+| Archived | Restore with a swipe |
+| Settings | Dark mode, app lock, backup/import, CSV, delete all |
 
 ## Architecture
 
 ```text
-Flutter UI
-  -> Provider state (MemoryService and SettingsService)
-  -> Local services (extraction, duplicate detection, reminders, attachments)
-  -> SQLite database and application-document attachments
+Flutter UI (lib/screens, lib/widgets)
+  -> Provider state: MemoryService, SettingsService
+  -> Local services: extraction, duplicate detection, recurrence, reminders,
+                     attachments, export/import
+  -> SQLite (sqflite) and photo files in the app documents folder
 ```
 
-The app is intentionally local-first. The extraction and natural-language query features are heuristic/rule based, not LLM-based. There is no semantic vector index, cloud RAG pipeline, or user-account system in the current version.
+```text
+lib/
+  app.dart, main.dart       app shell, light/dark theme, bottom navigation
+  models/memory.dart        the Memory record and its database mapping
+  services/
+    memory_service.dart     state, search, follow-ups, reminders, import preview
+    database_service.dart   SQLite schema, migrations, queries
+    entity_extractor.dart   people, amounts, dates, locations, keywords
+    category_classifier.dart, commitment_extractor.dart, duplicate_detector.dart
+    search_answer.dart      written answers above search results
+    recurrence.dart         daily / weekly / monthly reminder maths
+    reminder_service.dart   on-device notifications
+    export_service.dart     JSON backup (with photos), CSV, restore
+    attachment_service.dart, settings_service.dart
+  screens/, widgets/        UI
+test/, integration_test/    automated tests
+```
 
-## Local development
+Understanding and search are heuristic, not machine-learning based. There is no vector index, cloud pipeline or account system.
+
+## Getting started
 
 ### Prerequisites
 
-- Flutter stable compatible with Dart 3.5 or later.
-- Android SDK for Android development.
-- Xcode and a macOS host for iOS development.
-- A physical device for final validation of notifications, microphone input, camera/gallery input, and device authentication.
+- A current stable Flutter SDK.
+- Android SDK for Android. The build asks for NDK 28.2.13676358 and Gradle installs it on first use.
+- Xcode on a Mac for iOS.
+- A physical phone for final checks of notifications, microphone, camera and device authentication.
 
-### Setup
+### Run it
 
 ```sh
 flutter pub get
-dart analyze lib test
+flutter analyze
 flutter test
 flutter run
 ```
 
-Use `flutter devices` to see available devices. Run on a physical Android device before treating a build as release candidate quality.
+`flutter devices` lists the available devices.
 
 ## Testing
 
-Automated tests currently cover:
+Run everything with `flutter test`. Several hundred automated tests cover:
 
-- Memory serialization and database-compatible numeric values.
-- Persisted pin, reminder, settlement, tag, attachment, task, and recurrence state.
-- Entity extraction, category classification, duplicate detection, recurrence calculations, and grounded search answers.
-- Local database behavior (`test/database/`): create, read, update and delete; filters, search and ordering; persistence across restarts; and upgrades from schema versions 1, 2 and 3 to the current version without losing data. These run against SQLite on the development machine via `sqflite_common_ffi`, so they need no phone or emulator.
+- **Database** (`test/database/`): create, read, update, delete, filters, search, ordering, persistence across restarts, and upgrades from schema versions 1 to 4 to the current one without losing data. They use SQLite on the development machine through `sqflite_common_ffi`, so no phone is needed.
+- **Services** (`test/services/`): `MemoryService` (saving, duplicates, import/export, follow-ups, reminders, snooze and repeat, overdue rules, keyword search, pin and archive, day labels, questions), extraction, classification, recurrence maths, search answers, backup format and photo restore, settings and attachments. These use an in-memory fake database and a fake reminder service (`test/helpers/fakes.dart`).
+- **Screens and widgets** (`test/widgets/`): home, add memory, search, memory detail, timeline, person, all memories, archived, settings, the memory card, follow-up actions, app lock, tab navigation and the light and dark themes.
+- **End to end** (`integration_test/`): runs the real app on a phone or emulator: add a memory, find it by searching, and check it survives a restart. Run it with `flutter test integration_test`.
 
-- Services (`test/services/`): `MemoryService` (saving, duplicate detection, import/export round trips, follow-ups, reminders, pin/archive, day labels, natural-language questions), search answers, CSV/JSON export and import parsing, settings, and attachment deletion. These use an in-memory fake database and a fake reminder service (`test/helpers/fakes.dart`).
-- Screens and widgets (`test/widgets/`): home, add memory, search, memory detail, settings, the memory card, app lock (with a stand-in for the device check) and tab navigation.
-- One end-to-end test (`integration_test/`) that runs the real app on a phone or emulator: add a memory, then find it by searching, and check it survives a restart. Run it with `flutter test integration_test`.
+### Continuous integration
 
-Not covered by automated tests, so check by hand on a device: voice input, camera/gallery, real notification delivery, the device's fingerprint/PIN prompt, sharing an export file and picking a backup file.
+GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request:
 
-Before every release, also manually verify:
+1. Analyze and run all unit and widget tests (blocking).
+2. Build a debug Android APK and an iOS build without code signing.
+3. Run the integration test on an Android emulator. This job reports a result but does not block a merge, because emulators on CI can be flaky.
 
-1. Database upgrade with existing data.
-2. Voice capture and microphone permission.
-3. Camera/gallery attachment selection and deletion.
-4. Notification scheduling, editing, and permission handling.
-5. App Lock on a device with screen lock configured.
-6. Export/import with representative data.
-7. Archive/restore, follow-up completion, and data deletion.
+### Check by hand on a device
 
-## Database migrations
+Automated tests cannot cover the phone's own features:
 
-The local database is currently schema version 5. Migration code must remain in place after shipping because existing installations upgrade in place.
+1. Voice input and microphone permission.
+2. Camera and gallery photos.
+3. Notifications: delivery, snooze, daily/weekly/monthly repeat, permission handling.
+4. App lock with a screen lock configured.
+5. Sharing a backup, then deleting everything and importing it: check the preview, a photo and an archived memory.
+6. Upgrading over an installation that already has data.
+
+## Database and backups
+
+The database is currently at schema version 5. Migration code must stay in place because installed apps upgrade in place.
 
 | Version | Added |
 | --- | --- |
-| 3 | Pin state, reminder timestamp, and money settlement status |
-| 4 | Tags, attachment paths, task action/status, and recurrence metadata |
-| 5 | Missing status and task-status indexes for databases created by earlier releases |
+| 3 | Pin state, reminder time, money settlement status |
+| 4 | Tags, attachment paths, follow-up action and status, recurrence |
+| 5 | Status and follow-up indexes that earlier version 4 databases lacked |
+
+A JSON backup is an object with `app`, `version` (2), `exported_at`, `memories` and `attachments` (photo files encoded as text, keyed by file name). Memories refer to photos by file name, so a backup restores on any phone. Imports skip anything already present (same text and time, archived included) and only ever write photos inside the app's own folder.
 
 ## Release checklist
 
-Before publishing to Google Play or the App Store:
+Not started yet; publishing is deliberately postponed until the app is finished. Before publishing to Google Play or the App Store:
 
-1. Replace the placeholder Android application ID in `android/app/build.gradle.kts` with a permanent reverse-DNS ID.
-2. Configure an upload keystore via an untracked `key.properties` file. Never commit keys or passwords.
-3. Set final iOS bundle identifier, signing team, app icon, and store metadata.
-4. Prepare screenshots, support email, privacy policy, and store listing copy.
-5. Complete every manual test in the [Testing](#testing) section on physical devices.
-6. Create a signed Android App Bundle:
+1. Replace the placeholder Android application ID (`com.example.did_i_tell_you`) in `android/app/build.gradle.kts` with a permanent one.
+2. Set up an upload keystore through an untracked `key.properties`. Never commit keys or passwords.
+3. Set the iOS bundle identifier and signing team, and prepare store listing text and screenshots.
+4. Write a privacy policy and set up a support email.
+5. Complete the manual checks above on physical devices.
+6. Build a signed bundle with `flutter build appbundle --release`.
+7. Start with internal testing, then closed testing, before a staged rollout.
 
-```sh
-flutter build appbundle --release
-```
-
-7. Begin with Play Console internal testing, then closed testing, before a staged production rollout.
+The custom app icon is already in place for both platforms.
 
 ## Known limitations
 
-- Commitment recognition is intentionally simple; it does not provide advanced intent understanding.
-- Search is keyword and rule based. Similar wording is not semantically matched unless it shares terms, tags, or known query patterns.
-- There are no user accounts, cloud sync, account deletion flow, remote authorization, database encryption, or multi-device support.
-- Automated tests do not replace physical-device validation.
+- Understanding is rule-based: unusual names, phrasing and dates can be missed, and commitment detection is simple.
+- Search matches words, not meaning: "glasses" will not find "spectacles" unless a tag or the text shares the word.
+- The database is not encrypted; app lock only guards opening the app.
+- No accounts, cloud sync or multi-device support.
+- Web and desktop folders are Flutter scaffolding only; storage, notifications, backup and authentication are built and tested for Android and iOS.
+- Automated tests do not replace checks on a real device.
 
-## Planned cloud and AI phase
+## Roadmap
 
-After the local-first experience is verified, the next phase should add a secure backend deliberately rather than mixing cloud behavior into the current database layer:
+Possible next steps, none started:
 
-1. Authentication and user-scoped authorization.
-2. Encrypted sync and account/data-deletion controls.
-3. Secure media backup.
-4. Embeddings and semantic retrieval.
-5. Grounded RAG answers that cite source memories and communicate uncertainty.
-6. Stronger people summaries, commitment detection, recurring reminders, and snooze workflows.
-
-Any cloud release must guarantee that one user cannot retrieve another user's memories through row-level authorization, server-side validation, and independent security testing.
+1. **On-device semantic search** with a small embedding model, so questions match meaning as well as words, with memories still never leaving the phone.
+2. Better on-device extraction of dates and times (for example with Google's on-device entity extraction).
+3. Optional, opt-in cloud features behind a secure backend: sign-in, encrypted sync, and grounded answers that cite their source memories. Any cloud release needs per-user authorization and independent security testing.
+4. Store release, following the checklist above.
