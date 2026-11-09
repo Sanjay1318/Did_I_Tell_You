@@ -2,9 +2,9 @@
 
 [![CI](https://github.com/Sanjay1318/Did_I_Tell_You/actions/workflows/ci.yml/badge.svg)](https://github.com/Sanjay1318/Did_I_Tell_You/actions/workflows/ci.yml)
 
-**Did I Tell You?** is a private, local-first memory assistant for Android and iOS, built with Flutter. You tell it something once ("I lent Rahul ₹500", "parked at Forum Mall", "I'll send the resume tomorrow") and ask for it back later in plain language.
+**Did I Tell You?** is a private, local-first memory assistant built with Flutter. It runs as an Android app, an iOS app and a web app. You tell it something once ("I lent Rahul ₹500", "parked at Forum Mall", "I'll send the resume tomorrow") and ask for it back later in plain language.
 
-Everything stays on the phone. There is no account, server, analytics or internet connection needed to save and search memories.
+Everything stays on your device (or in your browser for the web version). There is no account, server, analytics or internet connection needed to save and search memories.
 
 ## Contents
 
@@ -13,6 +13,7 @@ Everything stays on the phone. There is no account, server, analytics or interne
 - [Screens](#screens)
 - [Architecture](#architecture)
 - [Getting started](#getting-started)
+- [Free hosting](#free-hosting)
 - [Testing](#testing)
 - [Database and backups](#database-and-backups)
 - [Release checklist](#release-checklist)
@@ -129,6 +130,39 @@ flutter run
 
 `flutter devices` lists the available devices.
 
+## Free hosting
+
+Both routes cost nothing and use only this GitHub repository.
+
+### Web app on GitHub Pages
+
+The web version is published automatically to `https://<your-user>.github.io/Did_I_Tell_You/` every time `main` changes (`.github/workflows/deploy-web.yml`).
+
+One-time setup: **Settings -> Pages -> Build and deployment -> Source: GitHub Actions** (the repository must be public on the free plan). Then run the workflow once from the **Actions** tab, or merge to `main`.
+
+The same `build/web` folder also works on Netlify, Cloudflare Pages, Vercel or any static host: build it with the commands below and upload the folder (set `--base-href "/"` when it is served from the root of a domain).
+
+```sh
+flutter pub get
+dart run sqflite_common_ffi_web:setup   # downloads sqlite3.wasm into web/
+flutter build web --release --base-href "/"
+```
+
+In the browser the data lives in that browser's own storage (IndexedDB), so clearing site data erases it; use **Export** for a backup. The web version does not have: notifications (reminders are saved but nothing is scheduled), app lock, or photo attachments. Backups from the web contain the memories without photos.
+
+To try it locally: `dart run sqflite_common_ffi_web:setup` once, then `flutter run -d chrome`.
+
+### Android APK on GitHub Releases
+
+`.github/workflows/release-android.yml` builds an installable APK and attaches it to a GitHub Release. Run it from the **Actions** tab (**Release Android APK -> Run workflow**, version such as `v1.0.0`), or push a tag:
+
+```sh
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Download `did-i-tell-you.apk` from the Releases page and open it on an Android phone (allow "install unknown apps" for your browser). The APK is signed with the debug key, which is fine for installing directly but is not accepted by Google Play.
+
 ## Testing
 
 Run everything with `flutter test`. Several hundred automated tests cover:
@@ -189,7 +223,7 @@ The custom app icon is already in place for both platforms.
 - Search matches words, not meaning: "glasses" will not find "spectacles" unless a tag or the text shares the word.
 - The database is not encrypted; app lock only guards opening the app.
 - No accounts, cloud sync or multi-device support.
-- Web and desktop folders are Flutter scaffolding only; storage, notifications, backup and authentication are built and tested for Android and iOS.
+- The web version has no notifications, app lock or photo attachments, and is tested only by compiling it in CI. Desktop folders are Flutter scaffolding only.
 - Automated tests do not replace checks on a real device.
 
 ## Roadmap
@@ -199,4 +233,4 @@ Possible next steps, none started:
 1. **On-device semantic search** with a small embedding model, so questions match meaning as well as words, with memories still never leaving the phone.
 2. Better on-device extraction of dates and times (for example with Google's on-device entity extraction).
 3. Optional, opt-in cloud features behind a secure backend: sign-in, encrypted sync, and grounded answers that cite their source memories. Any cloud release needs per-user authorization and independent security testing.
-4. Store release, following the checklist above.
+4. Store release, following the checklist above. Google Play ($25 once) and the App Store ($99 a year) are not free; GitHub Releases and Pages are.
