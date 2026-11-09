@@ -52,6 +52,22 @@ jobs:
           name: app-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
 
+  # Makes sure the web version still compiles, so a broken web build is caught
+  # in the pull request instead of after the merge.
+  build-web:
+    name: Build web
+    needs: analyze-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart run sqflite_common_ffi_web:setup
+      - run: flutter build web --release
+
   build-ios:
     name: Build iOS (no codesign)
     needs: analyze-and-test

@@ -1,10 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import '../models/memory.dart';
+import '../platform/file_download_stub.dart'
+    if (dart.library.js_interop) '../platform/file_download_web.dart';
 
 /// What a backup file holds: the memories and the photo files they refer to
 /// (file name -> bytes). Old backups are a bare list and carry no photos.
@@ -160,6 +164,14 @@ class ExportService {
   /// Reads the photos from disk and shares one JSON file that holds the
   /// memories and the photos.
   static Future<void> exportBackup(List<Memory> memories) async {
+    if (kIsWeb) {
+      // A browser has no photo files to read; the backup holds the memories.
+      downloadTextFile(
+        fileName: 'memory_backup_${DateTime.now().millisecondsSinceEpoch}.json',
+        content: buildBackup(memories, const {}),
+      );
+      return;
+    }
     final photoBytes = <String, List<int>>{};
     for (final path in memories.expand((m) => m.attachmentPaths).toSet()) {
       final file = File(path);
@@ -223,6 +235,14 @@ class ExportService {
   }
 
   static Future<void> exportToCsv(List<Memory> memories) async {
+    if (kIsWeb) {
+      downloadTextFile(
+        fileName: 'memory_export_${DateTime.now().millisecondsSinceEpoch}.csv',
+        content: buildCsv(memories),
+        mimeType: 'text/csv',
+      );
+      return;
+    }
     final dir = await getApplicationDocumentsDirectory();
     final file = File(
         '${dir.path}/memory_export_${DateTime.now().millisecondsSinceEpoch}.csv');

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/memory_service.dart';
@@ -75,8 +76,13 @@ Future<void> _importBackup(BuildContext context) async {
       ),
     );
     if (confirmed != true || !context.mounted) return;
-    final toImport =
-        await ExportService.restorePhotos(backup, preview.newMemories);
+    // A browser has no photo folder, so photos in a backup are left out there.
+    final toImport = kIsWeb
+        ? [
+            for (final memory in preview.newMemories)
+              memory.copyWith(attachmentPaths: const []),
+          ]
+        : await ExportService.restorePhotos(backup, preview.newMemories);
     final imported = await service.importMemories(toImport);
     if (!context.mounted) return;
     _say(context, '${_memories(imported)} imported.');
@@ -128,15 +134,17 @@ class SettingsScreen extends StatelessWidget {
                   value: settings.darkMode,
                   onChanged: settings.setDarkMode,
                 ),
-                const Divider(height: 1),
-                SwitchListTile(
-                  secondary: const Icon(Icons.lock_outline),
-                  title: const Text('App lock'),
-                  subtitle:
-                      const Text('Require device authentication at launch'),
-                  value: settings.appLockEnabled,
-                  onChanged: settings.setAppLockEnabled,
-                ),
+                if (!kIsWeb) ...[
+                  const Divider(height: 1),
+                  SwitchListTile(
+                    secondary: const Icon(Icons.lock_outline),
+                    title: const Text('App lock'),
+                    subtitle:
+                        const Text('Require device authentication at launch'),
+                    value: settings.appLockEnabled,
+                    onChanged: settings.setAppLockEnabled,
+                  ),
+                ],
               ],
             ),
           ),

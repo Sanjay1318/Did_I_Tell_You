@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart';
@@ -239,14 +240,16 @@ class _AddMemoryScreenState extends State<AddMemoryScreen> {
                 prefixIcon: Icon(Icons.sell_outlined),
               ),
             ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: _addImage,
-              icon: const Icon(Icons.add_photo_alternate_outlined),
-              label: Text(_attachments.isEmpty
-                  ? 'Add photo or screenshot'
-                  : '${_attachments.length} attachment(s) added'),
-            ),
+            if (!kIsWeb) ...[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _addImage,
+                icon: const Icon(Icons.add_photo_alternate_outlined),
+                label: Text(_attachments.isEmpty
+                    ? 'Add photo or screenshot'
+                    : '${_attachments.length} attachment(s) added'),
+              ),
+            ],
           ],
           if (text.length > 10 &&
               (person != null ||
