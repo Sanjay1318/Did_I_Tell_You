@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'services/settings_service.dart';
@@ -72,6 +73,18 @@ class MemoryApp extends StatelessWidget {
       theme: buildAppTheme(Brightness.light),
       darkTheme: buildAppTheme(Brightness.dark),
       themeMode: settings.darkMode ? ThemeMode.dark : ThemeMode.light,
+      // In a wide browser window keep the phone layout in a centred column.
+      builder: (context, child) => kIsWeb
+          ? ColoredBox(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: child,
+                ),
+              ),
+            )
+          : child ?? const SizedBox.shrink(),
       home: const AppLock(child: MainNavigation()),
     );
   }

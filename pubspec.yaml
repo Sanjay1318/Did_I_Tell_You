@@ -25,6 +25,7 @@ dependencies:
   shared_preferences: ^2.3.2
   local_auth: ^2.3.0
   image_picker: ^1.1.2
+  web: ^1.1.0
 
 dev_dependencies:
   flutter_test:
@@ -35,6 +36,10 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   # Lets database tests run on a desktop/CI machine instead of a phone.
   sqflite_common_ffi: ^2.3.0
+  # Lets the same SQLite code run in a browser (see lib/platform/). Kept as a
+  # dev dependency on purpose: as a normal dependency it would pull sqlite3's
+  # native build step into the Android and iOS builds, which do not need it.
+  sqflite_common_ffi_web: '>=0.4.0 <2.0.0'
 
 flutter:
   uses-material-design: true

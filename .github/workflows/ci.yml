@@ -46,11 +46,35 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build apk --debug
+      # Gradle downloads from Maven/GitHub, which now and then time out, so
+      # try a few times before giving up.
+      - name: Build debug APK
+        run: |
+          for attempt in 1 2 3; do
+            flutter build apk --debug && exit 0
+            echo "Build failed (attempt $attempt), retrying..."
+            sleep 30
+          done
+          exit 1
       - uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
+
+  # Makes sure the web version still compiles, so a broken web build is caught
+  # in the pull request instead of after the merge.
+  build-web:
+    name: Build web
+    needs: analyze-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build web --release
 
   build-ios:
     name: Build iOS (no codesign)
@@ -63,7 +87,8 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build ios --debug --no-codesign
+      # Simulator build: compiles everything but needs no signing team.
+      - run: flutter build ios --simulator --debug
 
   # Runs the tests in integration_test/ (skipped if that folder is missing).
   # Boots an Android emulator on a Linux runner and runs your user-flow tests.

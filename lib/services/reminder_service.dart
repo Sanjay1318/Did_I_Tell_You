@@ -16,7 +16,10 @@ class ReminderService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
+  // Browsers cannot schedule notifications for a closed page, so on the web
+  // reminders are saved with the memory but nothing is scheduled.
   Future<void> initialize() async {
+    if (kIsWeb) return;
     tz.initializeTimeZones();
 
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -50,6 +53,7 @@ class ReminderService {
     required DateTime scheduledTime,
     String? repeat,
   }) async {
+    if (kIsWeb) return;
     const androidDetails = AndroidNotificationDetails(
       'memory_reminders',
       'Memory Reminders',
@@ -92,10 +96,12 @@ class ReminderService {
   }
 
   Future<void> cancelReminder(int id) async {
+    if (kIsWeb) return;
     await _plugin.cancel(id);
   }
 
   Future<void> cancelAll() async {
+    if (kIsWeb) return;
     await _plugin.cancelAll();
   }
 }

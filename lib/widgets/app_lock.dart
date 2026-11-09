@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:provider/provider.dart';
@@ -46,7 +47,8 @@ class _AppLockState extends State<AppLock> {
   @override
   Widget build(BuildContext context) {
     final enabled = context.watch<SettingsService>().appLockEnabled;
-    if (!enabled || _unlocked) return widget.child;
+    // A browser has no device lock to ask, so the lock is never applied there.
+    if (kIsWeb || !enabled || _unlocked) return widget.child;
     return Scaffold(
       body: Center(
         child: Padding(

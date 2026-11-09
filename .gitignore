@@ -53,3 +53,8 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Created by `dart run sqflite_common_ffi_web:setup`; the app only needs
+# web/sqlite3.wasm (which is committed), not the service worker files.
+/web/sqflite_sw.js
+/web/sqflite_sw.dart.js
