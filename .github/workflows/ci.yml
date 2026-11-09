@@ -46,7 +46,16 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build apk --debug
+      # Gradle downloads from Maven/GitHub, which now and then time out, so
+      # try a few times before giving up.
+      - name: Build debug APK
+        run: |
+          for attempt in 1 2 3; do
+            flutter build apk --debug && exit 0
+            echo "Build failed (attempt $attempt), retrying..."
+            sleep 30
+          done
+          exit 1
       - uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
@@ -65,7 +74,7 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: dart run sqflite_common_ffi_web:setup
+      - run: bash tool/setup_web.sh
       - run: flutter build web --release
 
   build-ios:
@@ -79,7 +88,8 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build ios --debug --no-codesign
+      # Simulator build: compiles everything but needs no signing team.
+      - run: flutter build ios --simulator --debug
 
   # Runs the tests in integration_test/ (skipped if that folder is missing).
   # Boots an Android emulator on a Linux runner and runs your user-flow tests.

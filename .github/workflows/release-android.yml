@@ -33,7 +33,14 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build apk --release
+      - name: Build release APK
+        run: |
+          for attempt in 1 2 3; do
+            flutter build apk --release && exit 0
+            echo "Build failed (attempt $attempt), retrying..."
+            sleep 30
+          done
+          exit 1
       - name: Name the file
         run: cp build/app/outputs/flutter-apk/app-release.apk did-i-tell-you.apk
       - uses: softprops/action-gh-release@v2

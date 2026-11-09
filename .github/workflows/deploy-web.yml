@@ -30,8 +30,8 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      # Downloads sqlite3.wasm into web/ (the browser database engine).
-      - run: dart run sqflite_common_ffi_web:setup
+      # Puts sqlite3.wasm (the browser database engine) into web/.
+      - run: bash tool/setup_web.sh
       - run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"
       - uses: actions/upload-pages-artifact@v3
         with:
