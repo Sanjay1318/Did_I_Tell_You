@@ -1,3 +1,6 @@
+// ignore_for_file: depend_on_referenced_packages
+// (sqflite_common_ffi_web is a dev dependency; see pubspec.yaml.)
+
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
