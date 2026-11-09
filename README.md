@@ -144,13 +144,14 @@ The same `build/web` folder also works on Netlify, Cloudflare Pages, Vercel or a
 
 ```sh
 flutter pub get
-dart run sqflite_common_ffi_web:setup   # downloads sqlite3.wasm into web/
 flutter build web --release --base-href "/"
 ```
 
+The browser database engine, `web/sqlite3.wasm`, is committed to the repository so that builds do not depend on a download. To update it after upgrading `sqflite_common_ffi_web`, run `dart run sqflite_common_ffi_web:setup` and commit the new file.
+
 In the browser the data lives in that browser's own storage (IndexedDB), so clearing site data erases it; use **Export** for a backup. The web version does not have: notifications (reminders are saved but nothing is scheduled), app lock, or photo attachments. Backups from the web contain the memories without photos.
 
-To try it locally: `dart run sqflite_common_ffi_web:setup` once, then `flutter run -d chrome`.
+To try it locally: `flutter run -d chrome`.
 
 ### Android APK on GitHub Releases
 

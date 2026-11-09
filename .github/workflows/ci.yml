@@ -78,7 +78,6 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: bash tool/setup_web.sh
       - run: flutter build web --release
 
   build-ios:
