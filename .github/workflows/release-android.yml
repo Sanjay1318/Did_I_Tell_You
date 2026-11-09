@@ -33,6 +33,10 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
+      - name: Add a Maven Central mirror (GitHub downloads sometimes time out)
+        run: |
+          mkdir -p ~/.gradle/init.d
+          cp tool/maven-mirror.init.gradle ~/.gradle/init.d/
       - name: Build release APK
         run: |
           for attempt in 1 2 3; do
