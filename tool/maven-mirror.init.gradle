@@ -9,6 +9,8 @@
 // Installed by the workflows with:
 //   mkdir -p ~/.gradle/init.d && cp tool/maven-mirror.init.gradle ~/.gradle/init.d/
 
+import org.gradle.api.initialization.resolve.RepositoriesMode
+
 def mirrorUrl = 'https://maven-central.storage-download.googleapis.com/maven2/'
 
 def addMirror = { RepositoryHandler repos ->
@@ -24,7 +26,17 @@ beforeSettings { settings ->
     addMirror(settings.pluginManagement.repositories)
 }
 
+gradle.settingsEvaluated { settings ->
+    // Used by builds that declare their repositories in settings.gradle.
+    addMirror(settings.dependencyResolutionManagement.repositories)
+}
+
 allprojects { project ->
     addMirror(project.buildscript.repositories)
-    addMirror(project.repositories)
+    // Builds that "prefer settings repositories" refuse repositories added
+    // to a project, so only add one where projects are allowed their own.
+    def mode = gradle.settings.dependencyResolutionManagement.repositoriesMode.get()
+    if (mode == RepositoriesMode.PREFER_PROJECT) {
+        addMirror(project.repositories)
+    }
 }
